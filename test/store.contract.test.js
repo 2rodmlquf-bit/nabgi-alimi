@@ -123,4 +123,36 @@ for (const f of factories) {
     assert.ok(Array.isArray(i.notices));
     assert.equal(i.readOnly, false);
   });
+
+  t("빠른 메모: 저장하면 id와 시각이 붙고, 다시 열어도 같고, 안내 기록과 섞이지 않는다", async ({ store, reopen }) => {
+    await store.save({ ...clean(null), informed: { A: [ent("2026-10-10")] }, quickNotes: { A: [{ text: "전화로 들음: 통관 지연", createdAt: "2026-10-12T05:30:00.000Z" }, { text: "둘째 😀\n줄바꿈" }], B: [{ text: "다른 주문" }] } });
+    const v = (await store.load()).view;
+    assert.deepEqual(v.quickNotes.A.map(n => n.text), ["전화로 들음: 통관 지연", "둘째 😀\n줄바꿈"]);
+    assert.equal(v.quickNotes.A[0].createdAt, "2026-10-12T05:30:00.000Z");     // 화면이 준 시각을 그대로 쓴다
+    v.quickNotes.A.concat(v.quickNotes.B).forEach(n => { assert.ok(n.id); assert.ok(n.createdAt); });
+    assert.equal(v.informed.A.length, 1);                                       // 안내 기록은 그대로
+    assert.deepEqual((await reopen().load()).view, v);                          // 껐다 켜도 id까지 같다
+  });
+
+  t("빠른 메모를 지우면 다시 열어도 보이지 않고, 남은 메모와 안내 기록은 그대로다", async ({ store, reopen }) => {
+    await store.save({ ...clean(null), informed: { A: [ent("2026-10-10")] }, quickNotes: { A: [{ text: "첫째" }, { text: "둘째" }] } });
+    const v = (await store.load()).view;
+    const keep = v.quickNotes.A[1];
+    v.quickNotes.A.shift();
+    await store.save(v);
+    const after = (await reopen().load()).view;
+    assert.deepEqual(after.quickNotes.A, [keep]);
+    assert.equal(after.informed.A.length, 1);
+    delete after.quickNotes.A;
+    const s2 = reopen(); await s2.load(); await s2.save(after);
+    assert.deepEqual((await reopen().load()).view.quickNotes, {});
+  });
+
+  t("빠른 메모는 주문당 최근 50건까지만 보이고, 한 건은 300자까지다", async ({ store }) => {
+    const many = Array.from({ length: 60 }, (_, i) => ({ text: "m" + i }));
+    await store.save({ ...clean(null), quickNotes: { A: many, B: [{ text: "가".repeat(400) }] } });
+    const v = (await store.load()).view.quickNotes;
+    assert.equal(v.A.length, 50); assert.equal(v.A[0].text, "m10"); assert.equal(v.A[49].text, "m59");
+    assert.equal(v.B[0].text.length, 300);
+  });
 }

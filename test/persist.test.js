@@ -31,7 +31,34 @@ test("저장본 합치기: 현재 목록의 기록은 현재 상태로, 다른 �
 });
 
 test("깨진 저장본은 빈 상태로 읽는다", () => {
-  assert.deepEqual(clean(null), { edited: {}, reasons: {}, causeOverride: {}, notice: null, contacted: {}, contactLog: {}, informed: {}, subst: {}, schedule: {}, soonRules: null });
+  assert.deepEqual(clean(null), { edited: {}, reasons: {}, causeOverride: {}, notice: null, contacted: {}, contactLog: {}, informed: {}, quickNotes: {}, subst: {}, schedule: {}, soonRules: null });
   assert.deepEqual(clean({ edited: [1, 2], reasons: "x" }).edited, {});
   assert.deepEqual(counts({ edited: { A: {} }, causeOverride: { A: "x", B: "y" } }), { edited: 1, causeOverride: 2, reasons: 0 });
+});
+
+test("저장본: 빠른 메모는 빈 글을 버리고, 300자로 자르고, 주문당 최근 50건만 남기며, id·시각은 버리지 않는다", () => {
+  const many = Array.from({ length: 60 }, (_, i) => ({ text: "m" + i, createdAt: "2026-10-12T05:30:00.000Z" }));
+  const c = clean({ quickNotes: {
+    A: [{ text: "  ", createdAt: "x" }, { text: "가".repeat(400), id: "n1", createdAt: "2026-10-12T05:30:00.000Z" }, { text: 5 }, null, { text: "정상" }],
+    B: many, C: "x", D: [{ text: "" }],
+  } });
+  assert.deepEqual(c.quickNotes.A.map(n => n.text.length), [300, 2]);
+  assert.equal(c.quickNotes.A[0].id, "n1");
+  assert.equal(c.quickNotes.A[0].createdAt, "2026-10-12T05:30:00.000Z");
+  assert.equal(c.quickNotes.A[1].id, undefined);
+  assert.equal(c.quickNotes.B.length, 50);
+  assert.equal(c.quickNotes.B[0].text, "m10");                       // 오래된 10건이 잘린다
+  assert.equal(c.quickNotes.C, undefined);                           // 목록이 아니면 버린다
+  assert.equal(c.quickNotes.D, undefined);                           // 남은 메모가 없으면 주문 항목도 없다
+  assert.deepEqual(clean({ quickNotes: [1, 2] }).quickNotes, {});
+});
+
+test("저장본 합치기: 빠른 메모도 현재 목록의 주문은 현재 상태로, 다른 목록의 주문은 그대로 둔다", () => {
+  const saved = { quickNotes: { OLD: [{ text: "예전 목록 메모" }], A: [{ text: "지울 메모" }] } };
+  const m = mergeState(saved, { quickNotes: { A: [{ text: "새 메모" }] } }, ["A", "B"]);
+  assert.deepEqual(m.quickNotes.A.map(n => n.text), ["새 메모"]);
+  assert.deepEqual(m.quickNotes.OLD.map(n => n.text), ["예전 목록 메모"]);
+  const cleared = mergeState(saved, { quickNotes: {} }, ["A"]);       // 현재 목록에서 모두 지움
+  assert.equal(cleared.quickNotes.A, undefined);
+  assert.equal(cleared.quickNotes.OLD.length, 1);
 });

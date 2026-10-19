@@ -1,16 +1,16 @@
 // 저장 모델 v1과 화면용 뷰(view)의 변환. 디스크·DB와 무관한 순수 함수라서 로컬 파일 저장소와 (나중의) Supabase 저장소가 똑같이 쓴다.
 //
-// 뷰(view)  = 화면이 지금까지 쓰던 모양: { edited, reasons, causeOverride, notice, contacted, contactLog, informed, subst, schedule, soonRules }
-//             안내 기록(informed)에는 저장소가 붙인 id·createdAt이 들어 있고, **삭제된 기록은 보이지 않는다.**
+// 뷰(view)  = 화면이 쓰는 모양: { edited, reasons, causeOverride, notice, contacted, contactLog, informed, quickNotes, subst, schedule, soonRules }
+//             안내 기록(informed)·빠른 메모(quickNotes)에는 저장소가 붙인 id·createdAt이 들어 있고, **삭제된 것은 보이지 않는다.**
 // 상태(state) = 저장하는 v1 모양 (docs/DATA_MODEL.md):
 //   { schemaVersion: 1, savedAt,
 //     informLog:  { 주문번호: [{ id, date, channel, status, due, note, createdAt, deletedAt? }] },   // append-only, 취소는 deletedAt 표시
-//     quickNotes: { 주문번호: [{ id, text, createdAt, deletedAt? }] },                               // 빠른 메모 (Phase 3)
+//     quickNotes: { 주문번호: [{ id, text, createdAt, deletedAt? }] },                               // 빠른 메모 (Phase 3, FR-12). 취소와 같은 방식으로 삭제 표시
 //     orderMeta:  { 주문번호: { reason?, causeOverride?, edited?{from,to}, updatedAt } },
 //     settings:   { notice, soonRules, updatedAt },
 //     legacy:     { contacted, contactLog, subst, schedule } }                                        // 범위 밖 기능: 구조를 바꾸지 않고 보존
 //
-// 화면은 안내 기록을 취소할 때 목록에서 빼기만 한다. 그 차이를 fromView가 알아채서 "지운 것"이 아니라 "삭제 표시(deletedAt)"로 남긴다.
+// 화면은 안내 기록·메모를 취소/삭제할 때 목록에서 빼기만 한다. 그 차이를 fromView가 알아채서 "지운 것"이 아니라 "삭제 표시(deletedAt)"로 남긴다.
 // 그래서 화면 코드를 바꾸지 않고도 삭제 흔적이 남고, 나중에 DB로 동기화할 때 삭제를 전달할 수 있다.
 const { randomUUID } = require("crypto");
 const P = require("../persist");
@@ -114,6 +114,10 @@ function toView(state) {
     const live = list.filter(e => !e.deletedAt).map(e => ({ id: e.id, date: e.date, channel: e.channel, status: e.status, due: e.due, note: e.note, createdAt: e.createdAt }));
     if (live.length) v.informed[no] = live;
   });
+  Object.entries(st.quickNotes).forEach(([no, list]) => {
+    const live = list.filter(e => !e.deletedAt).map(e => ({ id: e.id, text: e.text, createdAt: e.createdAt }));
+    if (live.length) v.quickNotes[no] = live;
+  });
   Object.entries(st.orderMeta).forEach(([no, m]) => {
     if (m.reason) v.reasons[no] = m.reason;
     if (m.causeOverride) v.causeOverride[no] = m.causeOverride;
@@ -124,17 +128,25 @@ function toView(state) {
   return P.clean(v);
 }
 
-// 이전 상태와 비교해 안내 기록을 합친다: 뷰에서 빠진 살아 있는 기록은 삭제 표시, 새 기록은 id·createdAt을 붙여 추가.
-function mergeLog(prevList, viewList, now, newId) {
-  const viewIds = new Set(viewList.map(e => e.id).filter(Boolean));
+// 이전 상태와 비교해 기록 목록(안내 기록, 빠른 메모)을 합친다: 뷰에서 빠진 살아 있는 기록은 삭제 표시, 새 기록은 build가 만든 모양으로 id를 붙여 추가.
+function mergeList(prevList, viewList, now, newId, build) {
+  const sig = e => JSON.stringify([build(e), e.createdAt || ""]);
   const prevLive = new Set(prevList.filter(e => !e.deletedAt).map(e => e.id));
-  const out = prevList.map(e => (!e.deletedAt && !viewIds.has(e.id) ? { ...e, deletedAt: now } : e));
+  // 화면에서 방금 만든 기록은 아직 id가 없다. 이미 저장된 같은 내용·같은 시각의 기록이 있으면 그 기록으로 본다 (저장할 때마다 새로 만들지 않는다).
+  const bySig = new Map();
+  prevList.filter(e => !e.deletedAt).forEach(e => { const k = sig(e); (bySig.get(k) || bySig.set(k, []).get(k)).push(e.id); });
+  const keep = new Set(), fresh = [];
   viewList.forEach(v => {
-    if (v.id && prevLive.has(v.id)) return;                                   // 이미 있는 기록 (기록은 고치지 않는다)
-    out.push({ id: newId(), date: v.date, channel: v.channel, status: v.status, due: v.due, note: v.note, createdAt: v.createdAt || now });
+    if (v.id && prevLive.has(v.id)) { keep.add(v.id); return; }                // 이미 있는 기록 (기록은 고치지 않는다)
+    const ids = !v.id && v.createdAt ? (bySig.get(sig(v)) || []).filter(i => !keep.has(i)) : [];
+    if (ids.length) keep.add(ids[0]); else fresh.push(v);
   });
+  const out = prevList.map(e => (!e.deletedAt && !keep.has(e.id) ? { ...e, deletedAt: now } : e));
+  fresh.forEach(v => out.push({ id: newId(), ...build(v), createdAt: v.createdAt || now }));
   return capLog(out, now);
 }
+const buildInform = v => ({ date: v.date, channel: v.channel, status: v.status, due: v.due, note: v.note });
+const buildNote = v => ({ text: v.text });
 
 const metaKey = m => JSON.stringify([m.reason || "", m.causeOverride || "", m.edited ? [m.edited.from, m.edited.to] : null]);
 
@@ -148,10 +160,13 @@ function fromView(rawView, prevState, opts = {}) {
   s.savedAt = now;
 
   new Set([...Object.keys(prev.informLog), ...Object.keys(view.informed)]).forEach(no => {
-    const merged = mergeLog(prev.informLog[no] || [], view.informed[no] || [], now, newId);
+    const merged = mergeList(prev.informLog[no] || [], view.informed[no] || [], now, newId, buildInform);
     if (merged.length) s.informLog[no] = merged;
   });
-  s.quickNotes = prev.quickNotes;                                             // 화면이 아직 모르는 데이터(Phase 3 전)는 그대로 둔다
+  new Set([...Object.keys(prev.quickNotes), ...Object.keys(view.quickNotes)]).forEach(no => {
+    const merged = mergeList(prev.quickNotes[no] || [], view.quickNotes[no] || [], now, newId, buildNote);
+    if (merged.length) s.quickNotes[no] = merged;
+  });
 
   new Set([...Object.keys(view.reasons), ...Object.keys(view.causeOverride), ...Object.keys(view.edited)]).forEach(no => {
     const m = {};
