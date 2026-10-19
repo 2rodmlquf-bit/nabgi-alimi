@@ -1,0 +1,16 @@
+# 의존성과 빌드 결과 (설치 파일은 111MB라 저장소에 넣지 않는다)
+node_modules/
+dist/
+
+# 임시·백업 파일
+*.tmp
+*.bak
+*.corrupt-*.json
+
+# E2E 결과물 (스크린샷, 임시 데이터)
+test/e2e/out/
+.e2e-userdata/
+
+# 운영체제·편집기
+Thumbs.db
+.DS_Store

@@ -1,0 +1,32 @@
+{
+  "name": "delivery-watch",
+  "version": "0.4.0",
+  "description": "납기 임박·지연 주문만 보여 주는 예외 목록 앱",
+  "author": "delivery-watch",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "dist": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "local.deliverywatch.app",
+    "productName": "납기 알리미",
+    "artifactName": "DeliveryWatch-Setup-${version}.exe",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "src/**/*", "renderer/**/*", "build/icon.png", "샘플주문.csv", "샘플메일/**/*", "샘플공급사/**/*", "package.json"],
+    "win": { "target": "nsis", "icon": "build/icon.png", "signExecutable": false },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "납기 알리미"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3"
+  }
+}

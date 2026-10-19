@@ -1,0 +1,20 @@
+Date: Fri, 09 Oct 2026 17:05:00 +0900
+From: Logistics <logi@trade.example>
+To: buyer@example.test
+Subject: ETA update PO-2026-1005
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="BOUND-1"
+
+This is a multi-part message.
+--BOUND-1
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: base64
+
+UE8tMjAyNi0xMDA1IEVURCAxMC8xOCwgRVRBIDEwLzI4IOyeheuLiOuLpC4=
+--BOUND-1
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: base64
+
+PGh0bWw+PGJvZHk+PHA+UE8tMjAyNi0xMDA1IEVURCAxMC8xOCwgRVRBIDEwLzI4IOyeheuLiOuL
+pC48L3A+PC9ib2R5PjwvaHRtbD4=
+--BOUND-1--
