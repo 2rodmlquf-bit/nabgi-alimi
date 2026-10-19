@@ -44,8 +44,8 @@
 | 항목 | 이유 | 다룰 곳 |
 |---|---|---|
 | FR-09 (a)·(b)를 **화면에서** 확인 | 단위 테스트는 규칙을 지키지만 화면 E2E는 (c)만 확인. 납기 변경은 이메일 반영 같은 별도 조작이 필요 | Phase 7 `S-CUJ2` |
-| FR-16 "새 파일의 납기가 저장된 값과 다르면 덮어쓰지 않고 알린다"의 **화면 알림 문구** | 규칙은 단위 테스트가 지킴(`applySavedDue`) | Phase 2 |
-| FR-02 `guessMapping`(열 이름 추측) | 코드가 renderer 안이라 단위 테스트 불가 (L-4) | Phase 2에서 `src/columns.js`로 분리 |
+| FR-16 "새 파일의 납기가 저장된 값과 다르면 덮어쓰지 않고 알린다"의 **화면 알림 문구** | 규칙은 단위 테스트가 지킴(`applySavedDue`). 저장소 변경(Phase 2)은 이 규칙을 건드리지 않았다 | Phase 7 |
+| FR-02 `guessMapping`(열 이름 추측) | **해결 (Phase 2)**: `src/columns.js`로 분리하고 `test/columns.test.js` 7개로 지킨다 | -- |
 | FR-01 CSV 읽기 `src/csv.js` | 전용 단위 테스트 없음 (판정 테스트가 샘플 CSV로 간접 확인) | Phase 4에서 xlsx와 함께 |
 | 파일 열기·저장 **대화상자**, 클립보드 복사 | E2E는 대화상자를 우회한다 | `MANUAL_TESTS.md` M-01~M-05 |
 | main.js의 IPC 처리기 전반 | Electron 안에서만 돌아서 단위 테스트가 어렵다 | E2E가 간접 확인 |

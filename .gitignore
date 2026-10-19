@@ -14,3 +14,6 @@ e2e/out/
 # 운영체제·편집기
 Thumbs.db
 .DS_Store
+
+# 실제 사용자 데이터의 백업 (저장소에 넣지 않는다)
+.backup/
