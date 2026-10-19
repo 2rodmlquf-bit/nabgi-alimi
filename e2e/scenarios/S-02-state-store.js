@@ -68,7 +68,7 @@ module.exports = {
     await app.click("#sampleBtn"); await rowsReady(app);
     await app.click("#tbody tr"); await app.sleep(250);
     await app.clickText("#detail button", "안내함으로 기록");
-    const fresh = await app.waitFor(() => { try { return readJson(path.join(dir2, "state.json")); } catch (e) { return null; } }, 5000);
+    const fresh = await app.waitFor(() => { try { const j = readJson(path.join(dir2, "state.json")); return j && j.informLog && Object.keys(j.informLog).length >= 1 ? j : null; } catch (e) { return null; } }, 12000);   // 기록이 들어간 파일을 기다린다 (먼저 쓰인 빈 파일을 읽고 실패하던 경쟁 상태를 없앰)
     ctx.check("그 뒤에는 평소처럼 쓸 수 있다: 안내 기록이 새 v1 파일에 저장된다", !!fresh && fresh.schemaVersion === 1 && Object.keys(fresh.informLog).length === 1);
     await app.close();
 

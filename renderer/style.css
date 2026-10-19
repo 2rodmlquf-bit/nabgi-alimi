@@ -1,13 +1,13 @@
 /* 납기 알리미 화면. 분홍·하늘색 바탕에 지연(장미)·임박(호박)·정상(민트)·입고(하늘)·확인(라벤더)로 상태를 색으로 구분한다. */
 :root {
   --bg1: #fdeff3; --bg2: #eaf4fb; --bg3: #f6f9fc;
-  --surface: #ffffff; --surface-2: #f4f7fb; --ink: #2a2f3a; --muted: #697586; --line: #e5eaf1;
-  --accent: #3d8fd1; --accent-2: #2f78c4; --accent-ink: #ffffff; --accent-soft: #e4f1fb;
-  --rose: #d6456b; --rose-soft: #fde8ee;
-  --amber: #b4741a; --amber-soft: #fcf0d6;
-  --mint: #2a9373; --mint-soft: #ddf4ea;
-  --sky: #3d8fd1; --sky-soft: #e4f1fb;
-  --lav: #6a5acd; --lav-soft: #ece9fb;
+  --surface: #ffffff; --surface-2: #f4f7fb; --ink: #2a2f3a; --muted: #5a6577; --line: #e5eaf1;
+  --accent: #2a6db0; --accent-2: #225c97; --accent-ink: #ffffff; --accent-soft: #e4f1fb;
+  --rose: #b8325a; --rose-soft: #fde8ee;
+  --amber: #8f5a0e; --amber-soft: #fcf0d6;
+  --mint: #1d7358; --mint-soft: #ddf4ea;
+  --sky: #2a6db0; --sky-soft: #e4f1fb;
+  --lav: #5546b8; --lav-soft: #ece9fb;
   --shadow: 0 1px 2px rgba(60, 70, 100, .06), 0 10px 28px -14px rgba(60, 70, 100, .22);
   --font: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
 }
@@ -167,7 +167,13 @@ td.num { font-variant-numeric: tabular-nums; font-weight: 700; }
 .filenote { margin-top: 4px; }
 .filenote p { margin: 2px 0; }
 .filenote .warnline { font-weight: 600; }
-.sheetpick { font-size: 13px; }
+.sheetpick { font-size: 13px; }
+/* 키보드 사용 (Phase 6): 표 줄·정렬 머리글·필터 단추의 포커스 표시, 칸 안 단추는 글자처럼 보이게 */
+tbody tr:focus-visible, th.sortable:focus-visible, #detail:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+td.pick .cellbtn { all: unset; cursor: pointer; }
+td.pick .cellbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.backtolist { display: none; margin-bottom: 8px; }
+@media (max-width: 1000px) { .backtolist { display: inline-flex; } }
 button.nudge { box-shadow: 0 0 0 3px var(--accent); animation: nudgepulse 1.2s ease-in-out 2; }
 .nudgehint { margin-left: 8px; }
 @keyframes nudgepulse { 50% { box-shadow: 0 0 0 7px var(--accent-soft); } }
