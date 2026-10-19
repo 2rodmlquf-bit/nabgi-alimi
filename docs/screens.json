@@ -39,7 +39,7 @@
       "name": "다시 안내 기준(일)",
       "depth": 2,
       "form": "영역",
-      "status": "신규",
+      "status": "유지",
       "scope": "in"
     },
     {
@@ -47,7 +47,7 @@
       "name": "예외 목록",
       "depth": 1,
       "form": "탭",
-      "status": "변경",
+      "status": "유지",
       "scope": "in"
     },
     {
@@ -95,7 +95,7 @@
       "name": "주문 상세",
       "depth": 2,
       "form": "팝업",
-      "status": "변경",
+      "status": "유지",
       "scope": "in"
     },
     {
