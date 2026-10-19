@@ -78,7 +78,11 @@ function readSharedStrings(xml) {
 function readSheet(xml, shared, dateStyles) {
   const grid = [];
   let maxC = 0;
-  const put = (r, c, v) => { if (r >= MAX_ROWS || c >= MAX_COLS) return; (grid[r] = grid[r] || [])[c] = v; if (c + 1 > maxC) maxC = c + 1; };
+  const cut = { rows: false, cols: false };   // 한도를 넘는 칸이 있었는가 (조용히 버리지 않고 호출자에게 알린다)
+  const put = (r, c, v) => {
+    if (r >= MAX_ROWS || c >= MAX_COLS) { if (r >= MAX_ROWS) cut.rows = true; else cut.cols = true; return; }
+    (grid[r] = grid[r] || [])[c] = v; if (c + 1 > maxC) maxC = c + 1;
+  };
   const re = /<c\s([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
   let m;
   while ((m = re.exec(xml))) {
@@ -107,10 +111,11 @@ function readSheet(xml, shared, dateStyles) {
   const rows = [];
   for (let r = 0; r < grid.length; r++) { const row = grid[r] || []; const out = []; for (let c = 0; c < maxC; c++) out.push(row[c] != null ? row[c] : ""); rows.push(out); }
   while (rows.length && rows[rows.length - 1].every(x => x === "")) rows.pop();
-  return rows;
+  return { rows, truncated: cut };
 }
 
-// 반환: [{ name, rows: string[][] }]  (시트 순서대로)
+// 반환: [{ name, rows: string[][], truncated: { rows, cols } }]  (시트 순서대로)
+// truncated.rows/cols: 5,000행·80열 한도를 넘는 값이 있어 일부만 읽었다는 뜻.
 function readXlsx(buffer) {
   const zip = readZip(Buffer.from(buffer));
   if (!zip.has("xl/workbook.xml")) throw new XlsxError("엑셀(.xlsx) 파일 형식이 아니에요.");
@@ -125,10 +130,10 @@ function readXlsx(buffer) {
     let target = rels.get(attr(t, "r:id")) || "";
     target = target.replace(/^\//, "").replace(/^xl\//, "");
     const xml = target ? text("xl/" + target) : "";
-    if (xml) sheets.push({ name: attr(t, "name"), rows: readSheet(xml, shared, dateStyles) });
+    if (xml) { const sh = readSheet(xml, shared, dateStyles); sheets.push({ name: attr(t, "name"), rows: sh.rows, truncated: sh.truncated }); }
   });
   if (!sheets.length) throw new XlsxError("엑셀 안에서 시트를 찾지 못했어요.");
   return sheets;
 }
 
-module.exports = { readXlsx, XlsxError, serialToIso };
+module.exports = { readXlsx, XlsxError, serialToIso, MAX_ROWS, MAX_COLS };

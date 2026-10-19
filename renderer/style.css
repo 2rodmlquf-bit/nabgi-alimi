@@ -163,7 +163,11 @@ td.num { font-variant-numeric: tabular-nums; font-weight: 700; }
 .ecard .head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .ecard .dates { display: flex; gap: 6px 18px; flex-wrap: wrap; align-items: baseline; }
 .ecard blockquote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--surface); border-radius: 0 10px 10px 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
-.warnline { color: var(--rose); font-size: 13px; }
+.warnline { color: var(--rose); font-size: 13px; }
+.filenote { margin-top: 4px; }
+.filenote p { margin: 2px 0; }
+.filenote .warnline { font-weight: 600; }
+.sheetpick { font-size: 13px; }
 .chg { color: var(--rose); font-weight: 800; }
 .src { font-size: 12px; color: var(--muted); }
 .mapnote { font-weight: 500; font-size: 12px; color: var(--muted); }

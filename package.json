@@ -16,7 +16,7 @@
     "productName": "납기 알리미",
     "artifactName": "DeliveryWatch-Setup-${version}.exe",
     "directories": { "output": "dist" },
-    "files": ["main.js", "preload.js", "src/**/*", "renderer/**/*", "build/icon.png", "샘플주문.csv", "샘플메일/**/*", "샘플공급사/**/*", "package.json"],
+    "files": ["main.js", "preload.js", "src/**/*", "renderer/**/*", "build/icon.png", "샘플주문.csv", "샘플주문.xlsx", "샘플메일/**/*", "샘플공급사/**/*", "package.json"],
     "win": { "target": "nsis", "icon": "build/icon.png", "signExecutable": false },
     "nsis": {
       "oneClick": false,
