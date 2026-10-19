@@ -86,6 +86,18 @@ async function launchApp({ userData, openFile } = {}) {
     setValue: (sel, value, event = "change") => app.eval(`(() => { const e = document.querySelector(${q(sel)}); e.value = ${q(String(value))}; e.dispatchEvent(new Event(${q(event)}, { bubbles: true })); })()`),
     // 창 크기를 흉내 낸다 (레이아웃·미디어 쿼리가 이 크기로 계산된다). 끝나면 앱을 닫으므로 되돌릴 필요 없다.
     viewport: (width, height) => cdp.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false }),
+    // 키 하나를 실제 키 입력처럼 보낸다 ("Tab", "Enter", "ArrowDown", " " ...). shift: true면 Shift를 누른 채로.
+    press: async (key, { shift = false } = {}) => {
+      const codes = { Tab: 9, Enter: 13, ArrowDown: 40, ArrowUp: 38, ArrowLeft: 37, ArrowRight: 39, Home: 36, End: 35, " ": 32, Escape: 27 };
+      const text = key === "Enter" ? "\r" : key === " " ? " " : undefined;
+      const base = { key, code: key === " " ? "Space" : key, windowsVirtualKeyCode: codes[key], nativeVirtualKeyCode: codes[key], modifiers: shift ? 8 : 0 };
+      await cdp.send("Input.dispatchKeyEvent", { type: text ? "keyDown" : "rawKeyDown", ...base, ...(text ? { text } : {}) });
+      await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", ...base });
+      await sleep(120);
+    },
+    // 라이트·다크 모드를 흉내 낸다 ("light" | "dark")
+    // 끝난 색을 재도록 '동작 줄이기(prefers-reduced-motion)'도 함께 켠다 (앱 CSS가 transition을 끈다).
+    colorScheme: value => cdp.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value }, { name: "prefers-reduced-motion", value: "reduce" }] }),
     screenshot: async file => { const r = await cdp.send("Page.captureScreenshot", { format: "png" }); fs.writeFileSync(file, Buffer.from(r.result.data, "base64")); },
     close: async () => { try { cdp.close(); } catch (e) { /* 이미 닫힘 */ } killTree(child.pid); await sleep(700); },
   };

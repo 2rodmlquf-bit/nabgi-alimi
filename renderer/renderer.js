@@ -64,8 +64,27 @@ function compute() {
   render();
 }
 
+// ---- 키보드로 표 쓰기 (접근성) ----
+// 표에서 탭 정지 지점은 한 줄(고른 줄 또는 첫 줄)이다. 위·아래 화살표로 줄을 옮기고, Enter는 상세 열기, Space는 체크.
+// 그 줄의 체크 상자와 연구원·공급사 단추는 그 줄에 있을 때만 탭으로 닿는다.
+function activateRow(tr) {
+  [...$("tbody").children].forEach(r => { const on = r === tr; r.tabIndex = on ? 0 : -1; r.querySelectorAll("[data-rowctl]").forEach(c => (c.tabIndex = on ? 0 : -1)); });
+}
+function rowKey(e, tr, o, cb) {
+  if (e.target !== tr) return;                                                   // 줄 안의 체크 상자·단추가 받은 키는 건드리지 않는다
+  const rows = [...$("tbody").children], i = rows.indexOf(tr);
+  const go = j => { const r = rows[Math.max(0, Math.min(rows.length - 1, j))]; if (r) { e.preventDefault(); r.focus(); } };
+  if (e.key === "ArrowDown") go(i + 1);
+  else if (e.key === "ArrowUp") go(i - 1);
+  else if (e.key === "Home") go(0);
+  else if (e.key === "End") go(rows.length - 1);
+  else if (e.key === "Enter" && !e.repeat) { e.preventDefault(); S.selected = NO(o); S.focusDetail = true; render(); }   // 상세 패널로 포커스를 옮긴다 (Tab으로 안내 기록에 닿는다). 기록은 자동으로 하지 않는다
+  else if (e.key === " ") { e.preventDefault(); cb.checked = !cb.checked; cb.dispatchEvent(new Event("change")); }
+}
+document.addEventListener("focusin", e => { const tr = e.target.closest && e.target.closest("#tbody tr"); if (tr) activateRow(tr); });
+
 function partialBadge(o) { return el("span", { class: "badge warn" }, "부분입고 " + o.partial.received + "/" + o.partial.ordered); }
-function badge(status) { return el("span", { class: "badge " + (status === "지연" ? "late" : status === "임박" ? "soon" : "warn") }, status === "확인필요" ? "확인 필요" : status); }
+function badge(status) { return el("span", { class: "badge " + (status === "지연" ? "late" : status === "임박" ? "soon" : "warn") }, Labels.status(status)); }
 function daysText(o) { return o.daysLeft == null ? "-" : o.daysLeft < 0 ? "D+" + -o.daysLeft : o.daysLeft === 0 ? "D-day" : "D-" + o.daysLeft; }
 
 // ---- 2차: 지연 원인, 안내문, 지연 분석 ----
@@ -133,12 +152,12 @@ const informedOrder = o => ({ status: o.status, due: o["납기일"] || "" });
 const staleDays = () => S.reAlertDays || Informed.STALE_DAYS;
 const informedOf = o => Informed.stateOf(informedOrder(o), S.informed[NO(o)], baseDay(), staleDays());
 const informedSummary = list => Informed.summary(list.map(o => ({ order: informedOrder(o), entries: S.informed[NO(o)] })), baseDay(), staleDays());
-const informedLabel = o => { const st = informedOf(o); return st.state === "안내완료" ? "안내완료(" + st.last.date + ")" : st.state === "재안내필요" ? "다시 안내 필요(" + st.reason + ")" : "미안내"; };
+const informedLabel = o => { const st = informedOf(o); return st.state === "안내완료" ? Labels.state("안내완료") + "(" + st.last.date + ")" : st.state === "재안내필요" ? Labels.state("재안내필요") + "(" + st.reason + ")" : Labels.state("미안내"); };
 function informedBadge(o) {
   const st = informedOf(o);
   if (st.state === "안내완료") return el("span", { class: "badge ok", title: st.last.channel + "로 " + st.last.date + "에 안내함" }, "안내 " + st.last.date.slice(5));
-  if (st.state === "재안내필요") return el("span", { class: "badge soon", title: st.reason }, "다시 안내");
-  return el("span", { class: "badge late" }, "미안내");
+  if (st.state === "재안내필요") return el("span", { class: "badge soon", title: st.reason }, Labels.state("재안내필요"));
+  return el("span", { class: "badge late" }, Labels.state("미안내"));
 }
 // 표의 안내 칸에 붙는 작은 표시: 이 주문에 빠른 메모가 몇 건 있는지. 안내 상태와는 무관하다.
 function memoBadge(o) {
@@ -153,7 +172,7 @@ function recordInformed(list, channel, note) {
   return added;
 }
 function channelSelect() {
-  const sel = el("select", {}); Informed.CHANNELS.forEach(c => sel.append(el("option", { value: c }, c)));
+  const sel = el("select", { "aria-label": "안내 채널" }); Informed.CHANNELS.forEach(c => sel.append(el("option", { value: c }, c)));
   return sel;
 }
 
@@ -184,7 +203,9 @@ function sorted(list, { key, dir }) {
   }).map(p => p[0]);
 }
 function sortHead(label) {
-  const th = el("th", { class: "sortable", title: "누르면 정렬해요" }, label + (S.sort && S.sort.key === label ? (S.sort.dir === "asc" ? " ▲" : " ▼") : ""));
+  const th = el("th", { class: "sortable", title: "누르면 정렬해요", tabindex: "0", "aria-sort": S.sort && S.sort.key === label ? (S.sort.dir === "asc" ? "ascending" : "descending") : "none" }, label + (S.sort && S.sort.key === label ? (S.sort.dir === "asc" ? " ▲" : " ▼") : ""));
+  th.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); S.focusSort = label; th.click(); } });   // 키보드로도 정렬 (표가 다시 그려져도 포커스를 돌려준다)
+  if (S.focusSort === label) { S.focusSort = null; setTimeout(() => th.focus(), 0); }
   th.addEventListener("click", () => {
     if (!S.sort || S.sort.key !== label) S.sort = { key: label, dir: "asc" };
     else if (S.sort.dir === "asc") S.sort = { key: label, dir: "desc" };
@@ -205,7 +226,7 @@ function renderPickBar() {
   const status = el("span", { class: "sub" });
   const msg = (t, ok) => { status.className = "sub " + (ok ? "msg-ok" : "msg-err"); status.textContent = t; };
 
-  const chSel = el("select", {}); Escalate.CHANNELS.forEach(c => chSel.append(el("option", { value: c }, c)));
+  const chSel = el("select", { "aria-label": "연락 채널" }); Escalate.CHANNELS.forEach(c => chSel.append(el("option", { value: c }, c)));
   const contactBtn = el("button", {}, "공급사 " + sups.length + "곳에 연락함 기록");
   contactBtn.disabled = !sups.length;
   contactBtn.addEventListener("click", () => {
@@ -264,7 +285,7 @@ function renderDigestBox() {
   const name = S.filter.requester;
   if (!S.digestOpen || !name || S.view !== "list") { box.hidden = true; return; }
   const items = digestItems(name);
-  const ta = el("textarea", { rows: "14" });
+  const ta = el("textarea", { rows: "14", "aria-label": "한 통 안내문" });
   ta.value = Notice.renderDigest(name === "(요청자 없음)" ? "" : name, items, S.notice.signature);
   const copy = el("button", { class: "primary" }, "복사");
   const close = el("button", { class: "quiet" }, "닫기"); close.addEventListener("click", () => { S.digestOpen = false; S.digestMsg = ""; renderDigestBox(); });
@@ -291,7 +312,7 @@ function pickRow(kind, name, tr) {
 // 누르면 그 사람(공급사)의 주문만 목록에 보여 주는 칸
 function filterCell(kind, value) {
   const v = norm(value, kind === "requester" ? "(요청자 없음)" : "(공급사 없음)");
-  const td = el("td", { class: "pick", title: "누르면 '" + v + "' 주문만 보여요" }, value || "");
+  const td = el("td", { class: "pick", title: "누르면 '" + v + "' 주문만 보여요" }, value ? el("button", { type: "button", class: "cellbtn", "data-rowctl": "1", tabindex: "-1" }, value) : "");
   td.addEventListener("click", e => { e.stopPropagation(); S.filter = { ...S.filter, [kind]: v }; S.selected = null; S.view = "list"; render(); });
   return td;
 }
@@ -383,7 +404,7 @@ function bulkBox(d) {
   const fill = () => {
     list.replaceChildren();
     mine.forEach(o => {
-      const ta = el("textarea", { rows: "8" }); ta.value = noticeFor(o, S.notice.template, S.notice.alt);
+      const ta = el("textarea", { rows: "8", "aria-label": "안내문" }); ta.value = noticeFor(o, S.notice.template, S.notice.alt);
       const b = el("button", {}, "복사"); b.addEventListener("click", () => copyText(ta.value, b));
       list.append(el("div", { class: "nblock" }, el("b", {}, NO(o) + " " + (o["품목명"] || "")), ta, el("div", { class: "row" }, b)));
     });
@@ -452,7 +473,7 @@ function renderContact() {
     // 문구 만들기 (연락 단계에 맞는 것은 강조)
     const msgBox = el("div", {}); msgBox.hidden = true;
     const block = (label, text) => {
-      const ta = el("textarea", { rows: "11" }); ta.value = text;
+      const ta = el("textarea", { rows: "11", "aria-label": "메시지 문구" }); ta.value = text;
       const cp = el("button", {}, "복사"); cp.addEventListener("click", () => copyText(ta.value, cp));
       return el("div", { class: "nblock" }, el("b", {}, label), ta, el("div", { class: "row" }, cp));
     };
@@ -480,8 +501,8 @@ function renderContact() {
     }));
 
     // 연락 기록
-    const chSel = el("select", {}); Escalate.CHANNELS.forEach(c => chSel.append(el("option", { value: c }, c)));
-    const dateIn = el("input", { type: "date" }); dateIn.value = base;
+    const chSel = el("select", { "aria-label": "연락 채널" }); Escalate.CHANNELS.forEach(c => chSel.append(el("option", { value: c }, c)));
+    const dateIn = el("input", { type: "date", "aria-label": "연락한 날짜" }); dateIn.value = base;
     const saveProm = el("button", {}, "저장");
     saveProm.addEventListener("click", () => { if (dateIn.value) addLog(g.supplier, { date: base, kind: "reply", channel: chSel.value, promised: dateIn.value, note: "" }); });
     const promRow = el("div", { class: "row" }, el("span", { class: "sub" }, "들은 날짜"), dateIn, saveProm);
@@ -532,7 +553,7 @@ function renderReport() {
     status.className = "sub " + (r.ok ? "msg-ok" : "msg-err");
     status.textContent = r.ok ? "저장했어요: " + r.path : r.error;
   }
-  const ta = el("textarea", { rows: "22" }); ta.value = text;
+  const ta = el("textarea", { rows: "22", "aria-label": "보고 문구" }); ta.value = text;
   const copy = el("button", { class: "primary" }, "보고 문구 복사"); copy.addEventListener("click", () => copyText(ta.value, copy));
   const saveTxt = el("button", {}, "보고 문구 저장 (.txt)"); saveTxt.addEventListener("click", () => save("납기보고_" + base, ta.value, "txt"));
   const saveExc = el("button", {}, "예외 목록 CSV 저장");
@@ -606,7 +627,7 @@ function render() {
   notice.textContent = msgs.join(" "); notice.hidden = !msgs.length;
 
   const cols = TABLE_COLS.filter(c => S.mapping[c]);
-  const allBox = el("input", { type: "checkbox", title: "지금 보이는 주문 모두 선택" });
+  const allBox = el("input", { type: "checkbox", title: "지금 보이는 주문 모두 선택", "aria-label": "지금 보이는 주문 모두 선택" });
   const head = el("tr", {}, el("th", { class: "chk" }, allBox), sortHead("상태"), sortHead("남은 일수"), sortHead("안내"));
   cols.forEach(c => head.append(sortHead(c)));
   $("thead").replaceChildren(head);
@@ -615,15 +636,18 @@ function render() {
   body.replaceChildren();
   const shown = visible();
   shown.forEach(o => {
-    const cb = el("input", { type: "checkbox" });
+    const cb = el("input", { type: "checkbox", "aria-label": NO(o) + " 선택", "data-rowctl": "1", tabindex: "-1" });
     cb.checked = S.picked.has(NO(o));
     cb.addEventListener("click", e => e.stopPropagation());
     cb.addEventListener("change", () => { if (cb.checked) S.picked.add(NO(o)); else S.picked.delete(NO(o)); renderPickBar(); syncAll(); });
-    const tr = el("tr", { class: S.selected === o["주문번호"] ? "sel" : "" }, el("td", { class: "chk" }, cb), el("td", {}, badge(o.status), ...(o.partial ? [" ", partialBadge(o)] : []), ...(substOpen(o["주문번호"]) ? [" ", substBadge(o["주문번호"])] : [])), el("td", { class: "num" }, daysText(o)), el("td", {}, informedBadge(o), ...(QuickNote.count(S.quickNotes, NO(o)) ? [" ", memoBadge(o)] : [])));
+    const tr = el("tr", { class: S.selected === o["주문번호"] ? "sel" : "", tabindex: "-1", ...(S.selected === o["주문번호"] ? { "aria-current": "true" } : {}) }, el("td", { class: "chk" }, cb), el("td", {}, badge(o.status), ...(o.partial ? [" ", partialBadge(o)] : []), ...(substOpen(o["주문번호"]) ? [" ", substBadge(o["주문번호"])] : [])), el("td", { class: "num" }, daysText(o)), el("td", {}, informedBadge(o), ...(QuickNote.count(S.quickNotes, NO(o)) ? [" ", memoBadge(o)] : [])));
     cols.forEach(c => tr.append(c === "요청자" ? filterCell("requester", o[c]) : c === "공급사" ? filterCell("supplier", o[c]) : el("td", {}, o[c] || "")));
-    tr.addEventListener("click", () => { S.selected = o["주문번호"]; render(); });
+    tr.addEventListener("click", () => { S.selected = o["주문번호"]; S.scrollDetail = true; render(); });
+    tr.addEventListener("keydown", e => rowKey(e, tr, o, cb));
     body.append(tr);
   });
+  const act = body.querySelector("tr.sel") || body.firstElementChild;                  // 키보드로는 한 줄만 탭 정지 지점으로 둔다 (38줄을 일일이 탭하지 않게)
+  if (act) activateRow(act);
   const syncAll = () => { const n = shown.filter(o => S.picked.has(NO(o))).length; allBox.checked = shown.length > 0 && n === shown.length; allBox.indeterminate = n > 0 && n < shown.length; };
   allBox.addEventListener("change", () => { shown.forEach(o => { if (allBox.checked) S.picked.add(NO(o)); else S.picked.delete(NO(o)); }); render(); });
   syncAll(); renderPickBar();
@@ -636,7 +660,7 @@ function render() {
     const x = el("button", { class: "quiet" }, "필터 해제");
     x.addEventListener("click", () => { S.filter = {}; S.digestOpen = false; render(); });
     const nLate = shown.filter(o => o.status === "지연").length, nSoon = shown.filter(o => o.status === "임박").length, nCheck = shown.filter(o => o.status === "확인필요").length;
-    const who = [S.filter.requester && "요청자 " + S.filter.requester, S.filter.supplier && "공급사 " + S.filter.supplier, S.filter.cause && "원인 " + S.filter.cause].filter(Boolean).join(" · ");
+    const who = [S.filter.requester && "연구원 " + S.filter.requester, S.filter.supplier && "공급사 " + S.filter.supplier, S.filter.cause && "원인 " + S.filter.cause].filter(Boolean).join(" · ");
     const parts = [el("span", { class: "chip" }, who + " · 지연 " + nLate + "건" + (S.filter.cause ? "" : ", 임박 " + nSoon + "건" + (nCheck ? ", 확인 필요 " + nCheck + "건" : ""))), x];
     if (S.filter.requester && !S.filter.cause && !S.filter.supplier && shown.length) {
       const dg = el("button", { class: "primary" }, S.digestOpen ? "안내문 닫기" : "이 연구원에게 한 통 안내문");
@@ -649,6 +673,7 @@ function render() {
   renderInformBar(); renderDigestBox();
   $("listView").hidden = S.view !== "list"; $("analysis").hidden = S.view !== "ana"; $("contactView").hidden = S.view !== "contact"; $("reportView").hidden = S.view !== "report";
   $("tabList").classList.toggle("on", S.view === "list"); $("tabAna").classList.toggle("on", S.view === "ana"); $("tabContact").classList.toggle("on", S.view === "contact"); $("tabReport").classList.toggle("on", S.view === "report");
+  ["tabList", "tabAna", "tabContact", "tabReport"].forEach(id => $(id).setAttribute("aria-selected", String($(id).classList.contains("on"))));   // 스크린리더가 지금 어느 탭인지 알게
   if (S.view === "ana") renderAnalysis();
   if (S.view === "contact") renderContact();
   if (S.view === "report") renderReport();
@@ -698,7 +723,7 @@ function substBox(o) {
   drawCmp();
   const msgBox = el("div", {}); msgBox.hidden = true;
   const show = (label, text) => {
-    const ta = el("textarea", { rows: "11" }); ta.value = text;
+    const ta = el("textarea", { rows: "11", "aria-label": "메시지 문구" }); ta.value = text;
     const cp = el("button", {}, "복사"); cp.addEventListener("click", () => copyText(ta.value, cp));
     msgBox.replaceChildren(el("div", { class: "nblock" }, el("b", {}, label), ta, el("div", { class: "row" }, cp))); msgBox.hidden = false;
   };
@@ -738,7 +763,7 @@ function informedBox(o) {
     : st.state === "재안내필요" ? "다시 알려야 해요: " + st.reason + "."
     : "마지막 안내: " + st.last.date + " (" + st.ago + "일 전, " + st.last.channel + ")";
   const sel = channelSelect();
-  const note = el("input", { type: "text", placeholder: "메모 (예: 전화로 새 일정 확인 중이라고 설명)", maxlength: "200" });
+  const note = el("input", { type: "text", placeholder: "메모 (예: 전화로 새 일정 확인 중이라고 설명)", maxlength: "200", "aria-label": "안내 메모" });
   const rec = el("button", { class: "primary" }, "안내함으로 기록");
   rec.addEventListener("click", () => { recordInformed([o], sel.value, note.value.trim()); render(); });
   const undo = el("button", { class: "quiet" }, "마지막 기록 취소");
@@ -785,13 +810,26 @@ function quickNoteBox(o) {
     ...(notes.length ? [el("ul", { class: "hist" }, ...items)] : [el("p", { class: "sub" }, "전화·메신저로 받은 소식을 여기에 남겨 두세요. 안내 상태에는 영향이 없어요.")]));
 }
 
+const isNarrow = () => window.matchMedia("(max-width: 1000px)").matches;
+// 위에 붙어 있는 머리(제목·탭·기준일)의 아래쪽 끝. 요소로 스크롤할 때 머리에 가려지지 않게 그만큼 비워 둔다.
+function stickyBottom() { let b = 0; document.querySelectorAll("header, .top, .subbar").forEach(h => { if (getComputedStyle(h).position === "sticky") b = Math.max(b, h.getBoundingClientRect().bottom); }); return b; }
+function scrollBelowHeader(node, block) {
+  const r = node.getBoundingClientRect(), room = stickyBottom() + 8;
+  window.scrollBy(0, block === "center" ? r.top + r.height / 2 - (room + (window.innerHeight - room) / 2) : r.top - room);
+}
 function renderDetail() {
   const box = $("detail");
+  const goFocus = S.focusDetail, goScroll = S.scrollDetail; S.focusDetail = false; S.scrollDetail = false;
   const o = listed().find(x => x["주문번호"] === S.selected);
   if (!o) { box.replaceChildren(el("p", { class: "sub" }, "표에서 주문을 누르면 상세가 여기에 보여요.")); return; }
+  // 좁은 창에서는 상세가 표 아래로 내려가므로, 주문을 고르면 상세로 내려간다 (T6.6). 키보드로 열면 포커스도 옮긴다.
+  setTimeout(() => { if (goFocus) box.focus({ preventScroll: true }); if ((goFocus || goScroll) && isNarrow()) scrollBelowHeader(box, "start"); }, 0);
+  const back = el("button", { type: "button", class: "quiet backtolist" }, "↑ 목록으로");
+  back.addEventListener("click", () => { const tr = $("tbody").querySelector("tr.sel"); if (tr) { tr.focus({ preventScroll: true }); scrollBelowHeader(tr, "center"); } });
   const dl = el("dl", {});
   Object.entries(o._raw).forEach(([k, v]) => { dl.append(el("dt", {}, k), el("dd", {}, v || "(비어 있음)")); });
   box.replaceChildren(
+    back,
     el("h2", {}, o["주문번호"]),
     el("p", {}, badge(o.status), " ", o.reason),
     S.edited[o["주문번호"]] ? el("p", { class: "edited" }, "이메일 기준으로 납기를 바꿨어요 (원래 값: " + S.edited[o["주문번호"]].from + ")") : el("span", {}),
@@ -1106,7 +1144,7 @@ function renderSupResult() {
     const bySup = new Map();
     r.noReply.forEach(x => { const k = x.supplier || ""; if (!bySup.has(k)) bySup.set(k, []); bySup.get(k).push(x); });
     bySup.forEach((items, sup) => {
-      const ta = el("textarea", { rows: "8" }); ta.value = Reask.renderReask(sup, items, S.notice.signature);
+      const ta = el("textarea", { rows: "8", "aria-label": "재문의 문구" }); ta.value = Reask.renderReask(sup, items, S.notice.signature);
       const cp = el("button", {}, "복사"); cp.addEventListener("click", () => copyText(ta.value, cp));
       parts.push(el("div", { class: "nblock" }, el("b", {}, (sup || "(공급사 이름 없음)") + " · " + items.length + "건"), ta, el("div", { class: "row" }, cp)));
     });
@@ -1233,6 +1271,14 @@ $("emailRun").addEventListener("click", async () => {
   renderEmailItems(r.items);
 });
 
+$("mainTabs").addEventListener("keydown", e => {                                   // 탭 사이를 좌우 화살표로 (ARIA 탭 패턴)
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const tabs = [...$("mainTabs").querySelectorAll('[role="tab"]')], i = tabs.indexOf(document.activeElement);
+  if (i < 0) return;
+  e.preventDefault();
+  const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+  next.click(); next.focus();
+});
 $("tabList").addEventListener("click", () => { S.view = "list"; render(); });
 $("tabAna").addEventListener("click", () => { S.view = "ana"; render(); });
 $("tabContact").addEventListener("click", () => { S.view = "contact"; render(); });

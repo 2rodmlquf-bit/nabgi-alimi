@@ -36,7 +36,8 @@ module.exports = {
     await app.eval("document.querySelector('#tbody tr').children[7].click()"); await app.sleep(300);
     let chip = ((await app.text("#filterChip")) || "").trim();
     const reqs = await col(7);
-    ctx.check("FR-05 요청자 칸을 누르면 그 요청자의 주문만 남는다", /^요청자 /.test(chip) && reqs.length > 0 && new Set(reqs).size === 1, chip.split("\n")[0]);
+    // Phase 6 (G-3): 화면 문구는 "연구원"으로 통일했다. 필터 칩이 "요청자 …"에서 "연구원 …"으로 바뀐 것을 반영한다 (표 열 이름은 그대로 "요청자").
+    ctx.check("FR-05 요청자 칸을 누르면 그 요청자의 주문만 남는다", /^연구원 /.test(chip) && reqs.length > 0 && new Set(reqs).size === 1, chip.split("\n")[0]);
     await app.clickText("#filterChip button", "필터 해제"); await app.sleep(250);
     ctx.check("FR-05 '필터 해제'를 누르면 전체 목록으로 돌아온다", (await app.count("#tbody tr")) === 15);
 
