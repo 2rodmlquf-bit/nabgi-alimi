@@ -1,0 +1,238 @@
+{
+  "_comment": "IA.md 10절 화면목록에서 만든 기계가 읽는 사본이다. e2e/scenarios/S-01-screen-ids.js와 test/screens.test.js가 읽는다. IA를 바꾸면 이 파일도 같이 고친다 (status: 유지/변경/신규).",
+  "source": "납기-문제정의/IA.md v0.1 10절",
+  "screens": [
+    {
+      "id": "MN-00-P",
+      "name": "메인 (앱 셸)",
+      "depth": 0,
+      "form": "페이지",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "MN-11-P",
+      "name": "빈 화면",
+      "depth": 1,
+      "form": "페이지",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "MP-11-M",
+      "name": "열 매핑",
+      "depth": 1,
+      "form": "팝업",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "RU-11-M",
+      "name": "품목별 임박 기준",
+      "depth": 1,
+      "form": "팝업",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "RU-21-A",
+      "name": "다시 안내 기준(일)",
+      "depth": 2,
+      "form": "영역",
+      "status": "신규",
+      "scope": "in"
+    },
+    {
+      "id": "LS-11-T",
+      "name": "예외 목록",
+      "depth": 1,
+      "form": "탭",
+      "status": "변경",
+      "scope": "in"
+    },
+    {
+      "id": "LS-21-A",
+      "name": "요약 카드",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "LS-22-A",
+      "name": "연구원 안내 현황 막대",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "LS-23-A",
+      "name": "필터 칩 + 한 통 안내문",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "LS-24-A",
+      "name": "선택 처리 막대",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "LS-25-A",
+      "name": "주문 표",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "LS-26-M",
+      "name": "주문 상세",
+      "depth": 2,
+      "form": "팝업",
+      "status": "변경",
+      "scope": "in"
+    },
+    {
+      "id": "LS-31-A",
+      "name": "연구원 안내 기록",
+      "depth": 3,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "LS-32-A",
+      "name": "안내문 만들기",
+      "depth": 3,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "LS-33-A",
+      "name": "빠른 메모",
+      "depth": 3,
+      "form": "영역",
+      "status": "신규",
+      "scope": "in"
+    },
+    {
+      "id": "LS-34-A",
+      "name": "지연 원인",
+      "depth": 3,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "AN-11-T",
+      "name": "지연 분석",
+      "depth": 1,
+      "form": "탭",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "AN-21-A",
+      "name": "분석 표",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "AN-22-A",
+      "name": "연구원별 안내문",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "RP-11-T",
+      "name": "보고서",
+      "depth": 1,
+      "form": "탭",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "RP-21-A",
+      "name": "보고서 문구",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "RP-22-A",
+      "name": "CSV 내보내기",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "CT-11-T",
+      "name": "오늘 연락할 곳",
+      "depth": 1,
+      "form": "탭",
+      "status": "유지",
+      "scope": "out"
+    },
+    {
+      "id": "EM-11-M",
+      "name": "이메일 납기 추출",
+      "depth": 1,
+      "form": "팝업",
+      "status": "유지",
+      "scope": "out"
+    },
+    {
+      "id": "EM-21-A",
+      "name": "붙여넣기",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "out"
+    },
+    {
+      "id": "EM-22-A",
+      "name": "메일 폴더에서 읽기",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "out"
+    },
+    {
+      "id": "EM-23-A",
+      "name": "공급사 엑셀 읽기",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "out"
+    },
+    {
+      "id": "LS-35-A",
+      "name": "대체품 확인",
+      "depth": 3,
+      "form": "영역",
+      "status": "유지",
+      "scope": "out"
+    },
+    {
+      "id": "LS-36-A",
+      "name": "분납 일정",
+      "depth": 3,
+      "form": "영역",
+      "status": "유지",
+      "scope": "out"
+    }
+  ]
+}

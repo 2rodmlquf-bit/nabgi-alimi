@@ -344,7 +344,7 @@ function noticeBox(o, info) {
   ctl = templateControls(refresh, o);
   copyBtn.addEventListener("click", () => copyText(out.value, copyBtn));
   refresh();
-  return el("div", { class: "noticebox" }, el("h3", {}, "안내문 만들기"), ...ctl,
+  return el("div", { class: "noticebox", "data-screen-id": "LS-32-A" }, el("h3", {}, "안내문 만들기"), ...ctl,
     el("label", {}, "안내문 (고쳐 쓸 수 있어요)", out), el("div", { class: "row" }, copyBtn),
     el("p", { class: "sub" }, "사유는 이메일 추출이나 비고 열에서 가져왔어요. 보내기 전에 확인하세요. 이 앱은 메시지를 보내지 않아요."));
 }
@@ -355,7 +355,7 @@ function causeBox(o) {
   Cause.CATEGORIES.forEach(c => sel.append(el("option", { value: c }, c)));
   sel.value = S.causeOverride[NO(o)] || "";
   sel.addEventListener("change", () => { if (sel.value) S.causeOverride[NO(o)] = sel.value; else delete S.causeOverride[NO(o)]; persist(); render(); });
-  return el("div", { class: "causebox" }, el("label", {}, "지연 원인", sel),
+  return el("div", { class: "causebox", "data-screen-id": "LS-34-A" }, el("label", {}, "지연 원인", sel),
     el("p", { class: "sub" }, "현재: " + causeOf(o) + " (" + (S.causeOverride[NO(o)] ? "직접 지정" : "규칙") + ") · 사유 글: " + (reasonOf(o) || "없음")));
 }
 
@@ -370,7 +370,7 @@ function atable(headers, rows) {
 
 function bulkBox(d) {
   const mine = d.filter(o => requesterOf(o) === S.bulk);
-  const wrap = el("div", { class: "apanel noticebox", style: "border-top:0;margin-top:0" }, el("h3", {}, S.bulk + "님의 지연 " + mine.length + "건 안내문"));
+  const wrap = el("div", { class: "apanel noticebox", "data-screen-id": "AN-22-A", style: "border-top:0;margin-top:0" }, el("h3", {}, S.bulk + "님의 지연 " + mine.length + "건 안내문"));
   const list = el("div", { class: "emailres" });
   const fill = () => {
     list.replaceChildren();
@@ -533,10 +533,10 @@ function renderReport() {
   saveCon.addEventListener("click", () => save("연락할곳_" + base, Report.toCsv(Report.CONTACT_HEAD, Report.contactRows(groups, S.contacted)), "csv"));
 
   box.replaceChildren(
-    el("div", { class: "apanel" }, el("h3", {}, "보고 문구 (고쳐 쓴 뒤 복사하세요)"), ta,
+    el("div", { class: "apanel", "data-screen-id": "RP-21-A" }, el("h3", {}, "보고 문구 (고쳐 쓴 뒤 복사하세요)"), ta,
       el("div", { class: "row" }, copy, saveTxt),
       el("p", { class: "sub" }, "숫자는 지금 화면의 데이터에서 자동으로 만들었어요. 보내기 전에 내용을 확인하세요. 이 앱은 메시지를 보내지 않아요.")),
-    el("div", { class: "apanel" }, el("h3", {}, "파일로 저장 (엑셀에서 바로 열려요)"),
+    el("div", { class: "apanel", "data-screen-id": "RP-22-A" }, el("h3", {}, "파일로 저장 (엑셀에서 바로 열려요)"),
       el("div", { class: "row" }, saveExc, saveCon), status,
       el("p", { class: "sub" }, "예외 목록: 지연·임박·확인 필요 주문 전체(남은 일수, 공급사, 요청자, 지연 원인, 사유, 연락일). 연락할 곳: 공급사 순위별 주문. 공급사가 보낸 글에 =, +, -, @로 시작하는 칸이 있으면 엑셀이 수식으로 실행하지 않도록 앞에 '를 붙여 저장해요.")));
 }
@@ -547,12 +547,12 @@ function renderAnalysis() {
   if (!d.length) { box.replaceChildren(el("div", { class: "apanel" }, el("p", { class: "sub" }, "지금 기준으로 지연된 주문이 없어서 분석할 내용이 없어요."))); return; }
   const s = Analyze.summarize(d, causeOf);
   const panels = [];
-  panels.push(el("div", { class: "apanel" }, el("div", { class: "sumline" },
+  panels.push(el("div", { class: "apanel", "data-screen-id": "AN-21-A" }, el("div", { class: "sumline" },
     el("div", {}, el("b", {}, s.total + "건"), el("span", {}, "지연")), el("div", {}, el("b", {}, s.avgDays + "일"), el("span", {}, "평균 지연")), el("div", {}, el("b", {}, s.maxDays + "일"), el("span", {}, "가장 오래 지연")))));
 
   const max = Math.max(...s.byCause.map(c => c.count));
   const misc = (s.byCause.find(c => c.name === Cause.FALLBACK) || { count: 0 }).count;
-  const cp = el("div", { class: "apanel" }, el("h3", {}, "원인별 건수 (막대를 누르면 해당 주문만 목록에 보여요)"));
+  const cp = el("div", { class: "apanel", "data-screen-id": "AN-21-A" }, el("h3", {}, "원인별 건수 (막대를 누르면 해당 주문만 목록에 보여요)"));
   s.byCause.forEach(c => {
     const row = el("div", { class: "barrow" }, el("span", {}, c.name), el("div", { class: "track" }, el("div", { class: "fill" + (c.name === Cause.FALLBACK ? " misc" : ""), style: "width:" + Math.round((c.count / max) * 100) + "%" })), el("span", { class: "cnt" }, c.count + "건"));
     row.addEventListener("click", () => { S.filter = { cause: c.name }; S.view = "list"; render(); });
@@ -561,13 +561,13 @@ function renderAnalysis() {
   if (misc / s.total >= 0.5) cp.append(el("p", { class: "warnline2" }, "기타·미확인이 " + Math.round((misc / s.total) * 100) + "%예요. 사유 글이 없거나 규칙이 못 알아보는 표현이 많다는 뜻이라, 원인 비중으로 믿기 어려워요. 주문 상세에서 원인을 직접 지정하거나 사유를 채워 주세요."));
   panels.push(cp);
 
-  const sp = el("div", { class: "apanel" }, el("h3", {}, "공급사별 지연"));
+  const sp = el("div", { class: "apanel", "data-screen-id": "AN-21-A" }, el("h3", {}, "공급사별 지연"));
   if (!S.mapping["공급사"]) sp.append(el("p", { class: "sub" }, "공급사 열이 연결되어 있지 않아 표시하지 않아요."));
   else sp.append(atable([{ t: "공급사" }, { t: "지연 건수", n: 1 }, { t: "평균 지연(일)", n: 1 }, { t: "최장(일)", n: 1 }],
     s.bySupplier.map(g => pickRow("supplier", g.name, el("tr", { class: "pickrow", title: "누르면 이 공급사 주문만 목록에 보여요" }, el("td", {}, g.name), el("td", { class: "n" }, g.count), el("td", { class: "n" }, g.avg), el("td", { class: "n" }, g.max))))));
   panels.push(sp);
 
-  const rp = el("div", { class: "apanel" }, el("h3", {}, "연구원별 영향"));
+  const rp = el("div", { class: "apanel", "data-screen-id": "AN-21-A" }, el("h3", {}, "연구원별 영향"));
   if (!S.mapping["요청자"]) rp.append(el("p", { class: "sub" }, "요청자 열이 연결되어 있지 않아 표시하지 않아요."));
   else rp.append(atable([{ t: "연구원" }, { t: "지연 건수", n: 1 }, { t: "가장 오래(일)", n: 1 }, { t: "" }],
     s.byRequester.map(g => {
@@ -668,7 +668,7 @@ function substRows(o) {
   return rows;
 }
 function schedBlock(o) {
-  return el("div", { class: "causebox" }, el("h3", {}, "분납 일정"),
+  return el("div", { class: "causebox", "data-screen-id": "LS-36-A" }, el("h3", {}, "분납 일정"),
     el("ul", {}, ...S.schedule[NO(o)].map((e, i) => el("li", {}, (i + 1) + "차 " + e.date + (e.qty ? " · 수량 " + e.qty : "")))));
 }
 function substBox(o) {
@@ -701,7 +701,7 @@ function substBox(o) {
   b2.addEventListener("click", () => { const i = info(); show("공급사에 (발송 보류 요청)", Reask.renderSubstSupplier(i.supplier, { orderNo: no, item: o["품목명"] }, i.rows, "hold", S.notice.signature)); });
   const b3 = el("button", { class: "quiet" }, "공급사에 반려");
   b3.addEventListener("click", () => { const i = info(); show("공급사에 (반려)", Reask.renderSubstSupplier(i.supplier, { orderNo: no, item: o["품목명"] }, i.rows, "reject", S.notice.signature)); });
-  return el("div", { class: "causebox" }, el("h3", {}, "대체품 확인"),
+  return el("div", { class: "causebox", "data-screen-id": "LS-35-A" }, el("h3", {}, "대체품 확인"),
     el("label", {}, "상태", sel),
     el("label", {}, "공급사가 보낸 품목명", field("supItem", "예: 에어 필터 (FA-130)")),
     el("label", {}, "공급사가 보낸 규격", field("supSpec", "예: FA-130")),
@@ -736,7 +736,7 @@ function informedBox(o) {
   const undo = el("button", { class: "quiet" }, "마지막 기록 취소");
   undo.disabled = !log.length;
   undo.addEventListener("click", () => { Informed.undo(S.informed, no); persist(); render(); });
-  return el("div", { class: "causebox informbox" }, el("h3", {}, "연구원 안내 기록"), el("p", {}, informedBadge(o), " ", line),
+  return el("div", { class: "causebox informbox", "data-screen-id": "LS-31-A" }, el("h3", {}, "연구원 안내 기록"), el("p", {}, informedBadge(o), " ", line),
     ...(log.length ? [el("ul", { class: "hist" }, ...log.slice().reverse().map(e => el("li", {}, e.date + " · " + e.channel + " · " + e.status + " 때 안내" + (e.note ? " · " + e.note : ""))))] : []),
     el("div", { class: "row" }, sel, note, rec, undo),
     el("p", { class: "sub" }, "안내문을 보낸 뒤에 눌러 두세요. 납기가 바뀌거나 지연이 되면 '다시 안내'로 알려 줘요. 이 앱은 메시지를 보내지 않아요."));
