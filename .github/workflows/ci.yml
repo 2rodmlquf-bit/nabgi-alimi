@@ -1,0 +1,24 @@
+# 푸시·풀 리퀘스트마다 단위 테스트를 돌린다 (node --test: 판정, 안내 상태, 저장소 계약, 안정성, 보안 점검 등).
+# 실제 앱을 띄우는 E2E(npm run test:e2e)는 Electron과 화면이 필요해서 여기서는 돌리지 않고, 로컬에서 돌린다 (README 검증 절).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    runs-on: windows-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"   # 단위 테스트에는 Electron 실행 파일이 필요 없다
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
