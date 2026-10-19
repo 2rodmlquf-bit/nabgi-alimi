@@ -1,16 +1,5 @@
 // 화면 코드. 파일 읽기는 main.js가 하고, 여기서는 표시와 클릭만 다룬다.
-const STD = ["주문번호", "품목명", "공급사", "요청자", "발주일", "납기일", "선적상태", "통관상태", "입고여부", "주문수량", "입고수량", "잔량납기", "규격", "비고"];
-// 열 이름을 추측할 때 더 구체적인 이름(잔량납기, 입고수량)을 먼저 맞춘다. 안 그러면 "납기"·"입고"가 그 열을 가져가 버린다.
-const GUESS_ORDER = ["잔량납기", "입고수량", "주문번호", "품목명", "공급사", "요청자", "발주일", "납기일", "선적상태", "통관상태", "입고여부", "주문수량", "규격", "비고"];
-const REQUIRED = ["주문번호", "납기일"];
-// 열 이름 추측용 단어 (가정). 나중에 Claude 매핑이 이 자리를 대신한다.
-const HINTS = {
-  주문번호: ["주문번호", "발주번호", "po", "오더"], 품목명: ["품목", "품명", "자재", "item"], 공급사: ["공급사", "공급업체", "거래처", "vendor", "supplier"],
-  요청자: ["요청자", "신청자", "연구원", "담당"], 발주일: ["발주일", "주문일", "order date"], 납기일: ["납기", "due", "delivery"],
-  선적상태: ["선적", "shipping"], 통관상태: ["통관", "customs"], 입고여부: ["입고", "수령", "검수", "received"], 비고: ["비고", "메모", "note", "remark"],
-  주문수량: ["주문수량", "발주수량", "수량", "qty", "quantity"], 입고수량: ["입고수량", "수령수량", "입고량", "받은수량", "누적입고"],
-  잔량납기: ["잔량납기", "잔여납기", "분납납기", "2차납기"], 규격: ["규격", "모델", "사양", "spec", "model"],
-};
+const { STD, REQUIRED, guessMapping } = Columns;   // 열 이름 추측은 src/columns.js
 const TABLE_COLS = ["주문번호", "품목명", "공급사", "요청자", "납기일", "선적상태", "통관상태"];
 
 const $ = id => document.getElementById(id);
@@ -21,16 +10,6 @@ function localToday() {
   return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
 }
 
-function guessMapping(columns) {
-  const m = {}, used = new Set();
-  GUESS_ORDER.forEach(std => {
-    const lower = columns.map(c => c.toLowerCase());
-    let idx = lower.indexOf(std.toLowerCase());
-    if (idx < 0) idx = lower.findIndex((c, i) => !used.has(i) && HINTS[std].some(h => c.includes(h.toLowerCase())));
-    if (idx >= 0 && !used.has(idx)) { used.add(idx); m[std] = columns[idx]; } else m[std] = "";
-  });
-  return m;
-}
 
 function el(tag, attrs, ...kids) {
   const e = document.createElement(tag);
@@ -97,7 +76,8 @@ S.savedNote = ""; S.contacted = {}; S.contactLog = {}; S.informed = {}; S.onlyNe
 
 function showSaved() {
   const c = Persist.counts(P), total = c.edited + c.causeOverride + c.reasons;
-  $("savedInfo").textContent = total ? "저장된 기록: 납기 변경 " + c.edited + "건, 원인 지정 " + c.causeOverride + "건, 사유 " + c.reasons + "건" : "";
+  const counts = total ? "저장된 기록: 납기 변경 " + c.edited + "건, 원인 지정 " + c.causeOverride + "건, 사유 " + c.reasons + "건" : "";
+  $("savedInfo").textContent = [S.stateNotice, counts].filter(Boolean).join(" · ");   // 저장 파일에 문제가 있었으면(예전 형식 이전, 손상, 읽기 전용) 그 사실을 먼저 보여 준다
   $("clearSaved").hidden = !total;
 }
 function snapshot() {
@@ -124,6 +104,8 @@ function applySaved() {
 }
 async function initState() {
   P = Persist.clean(await window.app.loadState());
+  const info = await window.app.stateInfo();                      // 저장소가 알려 주는 것: 예전 형식을 바꿨는지, 손상 파일을 치웠는지, 읽기 전용인지
+  S.stateNotice = (info && info.notices || []).map(n => n.message).join(" ");
   S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
   if (P.notice && Notice.TEMPLATES.includes(P.notice.template)) S.notice = { template: P.notice.template, alt: P.notice.alt, signature: P.notice.signature || "" };
   S.soonRules = P.soonRules;
@@ -1166,7 +1148,9 @@ let confirmClear = false;
 $("clearSaved").addEventListener("click", async () => {
   if (!confirmClear) { confirmClear = true; $("clearSaved").textContent = "정말 지울까요? 한 번 더 누르세요"; return; }
   confirmClear = false; $("clearSaved").textContent = "저장 기록 지우기";
-  await window.app.clearState(); P = Persist.empty(); showSaved();
+  const cleared = await window.app.clearState();
+  if (cleared && cleared.ok === false) { $("savedInfo").textContent = cleared.error; return; }   // 지우지 못했으면 지운 척하지 않는다
+  P = Persist.empty(); S.stateNotice = ""; showSaved();
   $("savedInfo").textContent = "저장 기록을 지웠어요. 지금 열려 있는 목록의 변경은 파일을 다시 열면 원래대로 돌아가요.";
 });
 
