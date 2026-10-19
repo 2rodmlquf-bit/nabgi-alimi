@@ -49,16 +49,28 @@ const q = JSON.stringify; // 문자열을 자바스크립트 코드에 안전하
 // 앱을 띄운다. userData를 주면 그 폴더를 재사용하고(재시작 시험), 안 주면 새 임시 폴더를 만든다.
 async function launchApp({ userData, openFile } = {}) {
   const dir = userData || fs.mkdtempSync(path.join(ROOT, ".e2e-userdata-"));
-  const port = portSeed++;
-  const child = spawn(ELECTRON, [ROOT, `--remote-debugging-port=${port}`], {
-    env: { ...process.env, NABGI_E2E: "1", NABGI_USER_DATA: dir, NABGI_OPEN_FILE: openFile || "" }, stdio: "ignore",
-  });
   const errors = [];
-  const target = await waitFor(async () => {
-    try { const t = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); return t.find(x => x.type === "page" && /index\.html/.test(x.url)); } catch (e) { return null; }
-  }, 25000);
-  if (!target) { killTree(child.pid); throw new Error("앱 화면에 연결하지 못했어요"); }
+  // 앱은 한 개만 뜨도록 잠겨 있다(G-7). 방금 강제로 끈 앱의 잠금이 잠깐 남아 있으면 새 앱이 곧바로 끝나 버리므로, 그때는 조금 기다렸다가 다시 띄운다.
+  let port, child, target;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    port = portSeed++;
+    child = spawn(ELECTRON, [ROOT, `--remote-debugging-port=${port}`], {
+      env: { ...process.env, NABGI_E2E: "1", NABGI_USER_DATA: dir, NABGI_OPEN_FILE: openFile || "" }, stdio: "ignore",
+    });
+    let exited = false; child.on("exit", () => { exited = true; });
+    target = await waitFor(async () => {
+      if (exited) return "exited";
+      try { const t = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); return t.find(x => x.type === "page" && /index\.html/.test(x.url)); } catch (e) { return null; }
+    }, 25000);
+    if (target && target !== "exited") break;
+    killTree(child.pid);
+    if (!target) break;                                   // 25초 안에 안 뜸: 다시 해도 소용없다
+    await sleep(1200);
+  }
+  if (!target || target === "exited") { killTree(child.pid); throw new Error("앱 화면에 연결하지 못했어요"); }
   const cdp = await connectCdp(target.webSocketDebuggerUrl);
+  let closing = false;
+  child.on("exit", (code, sig) => { if (!closing) errors.push("앱 프로세스가 갑자기 끝났어요 (code=" + code + ", signal=" + sig + ")"); });   // 시험 도중 앱이 죽으면 원인을 남긴다
 
   // 콘솔 오류와 처리되지 않은 예외를 모은다 (시나리오가 끝나면 0건이어야 통과)
   cdp.on("Runtime.exceptionThrown", p => errors.push("예외: " + ((p.exceptionDetails.exception && p.exceptionDetails.exception.description) || p.exceptionDetails.text)));
@@ -69,7 +81,7 @@ async function launchApp({ userData, openFile } = {}) {
   const app = {
     userData: dir, errors, port,
     eval: async expr => {
-      const r = await cdp.send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true });
+      const r = await cdp.send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }).catch(e => { throw new Error(e.message + " ← " + String(expr).replace(/\s+/g, " ").slice(0, 110)); });
       if (r.result && r.result.exceptionDetails) throw new Error("화면 코드 오류: " + ((r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description) || r.result.exceptionDetails.text));
       return r.result && r.result.result ? r.result.result.value : undefined;
     },
@@ -99,7 +111,7 @@ async function launchApp({ userData, openFile } = {}) {
     // 끝난 색을 재도록 '동작 줄이기(prefers-reduced-motion)'도 함께 켠다 (앱 CSS가 transition을 끈다).
     colorScheme: value => cdp.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value }, { name: "prefers-reduced-motion", value: "reduce" }] }),
     screenshot: async file => { const r = await cdp.send("Page.captureScreenshot", { format: "png" }); fs.writeFileSync(file, Buffer.from(r.result.data, "base64")); },
-    close: async () => { try { cdp.close(); } catch (e) { /* 이미 닫힘 */ } killTree(child.pid); await sleep(700); },
+    close: async () => { closing = true; try { cdp.close(); } catch (e) { /* 이미 닫힘 */ } killTree(child.pid); await sleep(700); },
   };
 
   // 화면 스크립트가 준비될 때까지 기다린다
@@ -111,4 +123,4 @@ async function launchApp({ userData, openFile } = {}) {
 
 const fingerprint = f => { try { const c = require("crypto").createHash("sha256").update(fs.readFileSync(f)).digest("hex").slice(0, 16); const s = fs.statSync(f); return `${c}:${s.size}:${s.mtimeMs}`; } catch (e) { return "(없음)"; } };
 
-module.exports = { ROOT, SAMPLE_ORDERS, REAL_STATE, sleep, waitFor, launchApp, fingerprint };
+module.exports = { ELECTRON, ROOT, SAMPLE_ORDERS, REAL_STATE, sleep, waitFor, launchApp, fingerprint };

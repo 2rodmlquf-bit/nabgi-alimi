@@ -196,5 +196,6 @@ function migrateV0toV1(raw, opts = {}) {
 }
 
 const exceedsLimit = state => JSON.stringify(state).length > MAX_CHARS;
+const WARN_RATIO = 0.8;            // 저장 공간이 이만큼 차면 미리 알린다
 
-module.exports = { SCHEMA_VERSION, MAX_LIVE, MAX_TOMBSTONES, MAX_CHARS, emptyState, detectVersion, normalizeState, toView, fromView, migrateV0toV1, exceedsLimit };
+module.exports = { SCHEMA_VERSION, MAX_LIVE, MAX_TOMBSTONES, MAX_CHARS, WARN_RATIO, emptyState, detectVersion, normalizeState, toView, fromView, migrateV0toV1, exceedsLimit };

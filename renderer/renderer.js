@@ -96,7 +96,7 @@ S.savedNote = ""; S.contacted = {}; S.contactLog = {}; S.informed = {}; S.quickN
 function showSaved() {
   const c = Persist.counts(P), total = c.edited + c.causeOverride + c.reasons;
   const counts = total ? "저장된 기록: 납기 변경 " + c.edited + "건, 원인 지정 " + c.causeOverride + "건, 사유 " + c.reasons + "건" : "";
-  $("savedInfo").textContent = [S.stateNotice, counts].filter(Boolean).join(" · ");   // 저장 파일에 문제가 있었으면(예전 형식 이전, 손상, 읽기 전용) 그 사실을 먼저 보여 준다
+  $("savedInfo").textContent = [S.stateNotice, S.sizeWarn, counts].filter(Boolean).join(" · ");   // 저장 파일에 문제가 있었으면(예전 형식 이전, 손상, 읽기 전용) 그 사실을 먼저 보여 준다
   $("clearSaved").hidden = !total;
 }
 function snapshot() {
@@ -109,6 +109,7 @@ function persist() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     const r = await window.app.saveState(snapshot());
+    S.sizeWarn = r.ok && r.warning ? r.warning : "";                 // 저장 공간이 80%를 넘으면 미리 알린다
     if (r.ok) showSaved(); else $("savedInfo").textContent = r.error;
   }, 300);
 }

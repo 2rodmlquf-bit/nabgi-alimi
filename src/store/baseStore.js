@@ -72,10 +72,13 @@ class BaseStore {
       await this._ensureLoaded();
       if (this.readOnly) return { ok: false, error: "저장하지 않았어요: " + this._readOnlyWhy + "." };
       const next = Core.fromView(view, this._state, { now: this._now(), newId: this._newId });
-      if (Core.exceedsLimit(next)) return { ok: false, error: "저장할 내용이 너무 큽니다." };
-      try { await this._write(JSON.stringify(next)); } catch (e) { return { ok: false, error: "저장하지 못했습니다: " + e.message }; }
+      const text = JSON.stringify(next);
+      if (text.length > Core.MAX_CHARS) return { ok: false, error: "저장할 내용이 너무 큽니다. 오래된 안내 기록·메모를 줄이거나 저장 내용 지우기를 해 주세요." };
+      try { await this._write(text); } catch (e) { return { ok: false, error: "저장하지 못했습니다: " + e.message }; }
       this._state = next;
-      return { ok: true };
+      // 상한(2MB)에 가까워지면 거부되기 전에 미리 알린다 (80%부터)
+      const used = text.length / Core.MAX_CHARS;
+      return used >= Core.WARN_RATIO ? { ok: true, warning: "저장 공간을 " + Math.round(used * 100) + "% 썼어요. 가득 차면 더 저장되지 않으니 오래된 기록을 정리해 주세요." } : { ok: true };
     });
   }
 
