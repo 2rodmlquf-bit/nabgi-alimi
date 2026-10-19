@@ -167,7 +167,13 @@ td.num { font-variant-numeric: tabular-nums; font-weight: 700; }
 .filenote { margin-top: 4px; }
 .filenote p { margin: 2px 0; }
 .filenote .warnline { font-weight: 600; }
-.sheetpick { font-size: 13px; }
+.sheetpick { font-size: 13px; }
+button.nudge { box-shadow: 0 0 0 3px var(--accent); animation: nudgepulse 1.2s ease-in-out 2; }
+.nudgehint { margin-left: 8px; }
+@keyframes nudgepulse { 50% { box-shadow: 0 0 0 7px var(--accent-soft); } }
+@media (prefers-reduced-motion: reduce) { button.nudge { animation: none; } }
+#rulePanel .block { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+#reAlertDays { width: 5em; }
 .chg { color: var(--rose); font-weight: 800; }
 .src { font-size: 12px; color: var(--muted); }
 .mapnote { font-weight: 500; font-size: 12px; color: var(--muted); }

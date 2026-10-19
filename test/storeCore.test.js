@@ -245,3 +245,17 @@ test("id 없는 새 기록(화면에서 방금 만든 것)을 같은 상태로 �
   s = Core.fromView({ quickNotes: { A: [{ ...note }] }, informed: {} }, s, { now: T3, newId: ids });
   assert.deepEqual(s.quickNotes.A.map(n => [n.text, !!n.deletedAt]), [["통관 중", false], ["둘째", true]]);
 });
+
+test("설정: 다시 안내 기준 일수가 저장 상태(settings)에 들어가고 뷰로 돌아온다. 바뀔 때만 updatedAt이 바뀐다", () => {
+  let s = Core.fromView({ reAlertDays: 3 }, null, { now: T1, newId: ids });
+  assert.equal(s.settings.reAlertDays, 3);
+  assert.equal(Core.toView(s).reAlertDays, 3);
+  const same = Core.fromView({ reAlertDays: 3 }, s, { now: T2, newId: ids });
+  assert.equal(same.settings.updatedAt, s.settings.updatedAt);
+  const changed = Core.fromView({ reAlertDays: 5 }, same, { now: T3, newId: ids });
+  assert.equal(changed.settings.updatedAt, T3);
+  const reset = Core.fromView({}, changed, { now: T3, newId: ids });
+  assert.equal("reAlertDays" in reset.settings, false);
+  assert.equal("reAlertDays" in Core.toView(reset), false);
+  assert.equal(Core.fromView({ reAlertDays: 99 }, null, { now: T1, newId: ids }).settings.reAlertDays, undefined);   // 범위 밖은 저장하지 않는다
+});

@@ -58,6 +58,7 @@
       });
     }
     if (typeof saved.soonRules === "string") s.soonRules = saved.soonRules.slice(0, 2000);
+    if (Number.isInteger(saved.reAlertDays) && saved.reAlertDays >= 1 && saved.reAlertDays <= 30) s.reAlertDays = saved.reAlertDays;   // 다시 안내 기준 일수 (FR-18). 없으면 기본 7일
     if (saved.notice && typeof saved.notice === "object") s.notice = { template: String(saved.notice.template || ""), alt: String(saved.notice.alt || ""), signature: String(saved.notice.signature || "") };
     return s;
   }
@@ -89,6 +90,8 @@
     });
     out.notice = current.notice || out.notice;
     if (typeof current.soonRules === "string") out.soonRules = current.soonRules.slice(0, 2000); // 품목별 임박 기준은 주문과 무관하게 현재 값이 전부다
+    const days = clean({ reAlertDays: current.reAlertDays }).reAlertDays;                         // 다시 안내 기준도 현재 값이 전부다 (기본값으로 되돌리면 지워진다)
+    if (days) out.reAlertDays = days; else delete out.reAlertDays;
     if (current.contactLog) out.contactLog = clean({ contactLog: current.contactLog }).contactLog; // 공급사 이름 기준이라 현재 값이 전부다
     if (current.contacted) out.contacted = { ...current.contacted }; // 공급사 이름 기준이라 주문 목록과 무관하게 현재 값이 전부다 (해제도 반영)
     return out;

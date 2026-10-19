@@ -5,8 +5,20 @@
   const J = typeof require !== "undefined" ? require("./judge") : root.Judge;
   const CHANNELS = ["메일", "카톡·문자", "전화", "구두", "기타"];
   // 가정: 지연 중인 주문은 이 일수가 넘도록 새 소식을 안 알리면 다시 알려야 한다고 본다.
-  const STALE_DAYS = 7;
+  // 설정할 수 있는 범위 (FR-18). 기본은 7일.
+  const STALE_DAYS = 7, MIN_STALE_DAYS = 1, MAX_STALE_DAYS = 30;
 
+  // 화면 입력(글자)을 검사한다. 1~30의 정수만 받는다. 성공 { ok: true, days }, 실패 { ok: false, reason }.
+  function parseDays(raw) {
+    const s = typeof raw === "number" ? String(raw) : typeof raw === "string" ? raw.trim() : "";
+    if (!s) return { ok: false, reason: "일수를 입력해 주세요." };
+    if (!/^-?\d+$/.test(s)) return { ok: false, reason: "숫자(정수)만 넣을 수 있어요." };
+    const n = parseInt(s, 10);
+    if (n < MIN_STALE_DAYS || n > MAX_STALE_DAYS) return { ok: false, reason: MIN_STALE_DAYS + "~" + MAX_STALE_DAYS + "일 사이로 넣어 주세요." };
+    return { ok: true, days: n };
+  }
+  // 저장된 값 정리: 범위 안의 정수만 인정하고 나머지는 null(= 기본값을 쓴다).
+  const cleanDays = v => (Number.isInteger(v) && v >= MIN_STALE_DAYS && v <= MAX_STALE_DAYS ? v : null);
   const dayGap = (a, b) => { const x = J.parseDate(a), y = J.parseDate(b); return x && y ? Math.round((y - x) / 86400000) : 0; };
   // 납기일은 표기가 제각각이라 날짜로 바꿔 비교하고, 날짜로 읽을 수 없으면 글자로 비교한다.
   const sameDue = (a, b) => {
@@ -67,6 +79,6 @@
     return s;
   }
 
-  const api = { CHANNELS, STALE_DAYS, makeEntry, append, undo, stateOf, summary };
+  const api = { CHANNELS, STALE_DAYS, MIN_STALE_DAYS, MAX_STALE_DAYS, parseDays, cleanDays, makeEntry, append, undo, stateOf, summary };
   if (typeof module !== "undefined") module.exports = api; else root.Informed = api;
 })(typeof window !== "undefined" ? window : globalThis);

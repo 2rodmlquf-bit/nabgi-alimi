@@ -62,3 +62,14 @@ test("저장본 합치기: 빠른 메모도 현재 목록의 주문은 현재 �
   assert.equal(cleared.quickNotes.A, undefined);
   assert.equal(cleared.quickNotes.OLD.length, 1);
 });
+
+test("저장본: 다시 안내 기준 일수(reAlertDays)는 1~30의 정수만 남기고, 없으면 키 자체가 없다", () => {
+  assert.equal(clean({ reAlertDays: 3 }).reAlertDays, 3);
+  [0, 31, "7", 7.5, null, NaN].forEach(v => assert.equal("reAlertDays" in clean({ reAlertDays: v }), false, String(v)));
+  assert.equal("reAlertDays" in clean(null), false);
+});
+
+test("저장본 합치기: 다시 안내 기준은 주문과 무관하게 현재 값이 전부다 (기본값으로 되돌리면 지워진다)", () => {
+  assert.equal(mergeState({ reAlertDays: 3 }, { reAlertDays: 10 }, ["A"]).reAlertDays, 10);
+  assert.equal("reAlertDays" in mergeState({ reAlertDays: 3 }, {}, ["A"]), false);
+});

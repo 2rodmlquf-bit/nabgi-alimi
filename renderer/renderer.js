@@ -83,7 +83,7 @@ function showSaved() {
 function snapshot() {
   const idc = S.mapping["주문번호"];
   const nos = idc ? S.rows.map(r => r[idc]) : [];
-  P = Persist.mergeState(P, { edited: S.edited, reasons: S.reasons, causeOverride: S.causeOverride, notice: S.notice, contacted: S.contacted, contactLog: S.contactLog, informed: S.informed, quickNotes: S.quickNotes, subst: S.subst, schedule: S.schedule, soonRules: S.soonRules }, nos);
+  P = Persist.mergeState(P, { edited: S.edited, reasons: S.reasons, causeOverride: S.causeOverride, notice: S.notice, contacted: S.contacted, contactLog: S.contactLog, informed: S.informed, quickNotes: S.quickNotes, subst: S.subst, schedule: S.schedule, soonRules: S.soonRules, reAlertDays: S.reAlertDays || undefined }, nos);
   return P;
 }
 function persist() {
@@ -109,7 +109,9 @@ async function initState() {
   S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.quickNotes = JSON.parse(JSON.stringify(P.quickNotes)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
   if (P.notice && Notice.TEMPLATES.includes(P.notice.template)) S.notice = { template: P.notice.template, alt: P.notice.alt, signature: P.notice.signature || "" };
   S.soonRules = P.soonRules;
+  S.reAlertDays = P.reAlertDays || null;
   $("rulesText").value = S.soonRules || "";
+  $("reAlertDays").value = String(staleDays());
   showSaved();
 }
 
@@ -127,8 +129,10 @@ const hasFilter = () => !!(S.filter.cause || S.filter.requester || S.filter.supp
 // ---- 연구원 안내 기록: "연구원에게 알렸는가"를 주문마다 남기고, 다시 알려야 할 때를 알려 준다 ----
 const baseDay = () => $("today").value || localToday();
 const informedOrder = o => ({ status: o.status, due: o["납기일"] || "" });
-const informedOf = o => Informed.stateOf(informedOrder(o), S.informed[NO(o)], baseDay());
-const informedSummary = list => Informed.summary(list.map(o => ({ order: informedOrder(o), entries: S.informed[NO(o)] })), baseDay());
+// 다시 안내 기준 일수 (FR-18): 설정한 값, 없으면 기본 7일
+const staleDays = () => S.reAlertDays || Informed.STALE_DAYS;
+const informedOf = o => Informed.stateOf(informedOrder(o), S.informed[NO(o)], baseDay(), staleDays());
+const informedSummary = list => Informed.summary(list.map(o => ({ order: informedOrder(o), entries: S.informed[NO(o)] })), baseDay(), staleDays());
 const informedLabel = o => { const st = informedOf(o); return st.state === "안내완료" ? "안내완료(" + st.last.date + ")" : st.state === "재안내필요" ? "다시 안내 필요(" + st.reason + ")" : "미안내"; };
 function informedBadge(o) {
   const st = informedOf(o);
@@ -262,7 +266,7 @@ function renderDigestBox() {
   const items = digestItems(name);
   const ta = el("textarea", { rows: "14" });
   ta.value = Notice.renderDigest(name === "(요청자 없음)" ? "" : name, items, S.notice.signature);
-  const copy = el("button", { class: "primary" }, "복사"); copy.addEventListener("click", () => copyText(ta.value, copy));
+  const copy = el("button", { class: "primary" }, "복사");
   const close = el("button", { class: "quiet" }, "닫기"); close.addEventListener("click", () => { S.digestOpen = false; S.digestMsg = ""; renderDigestBox(); });
   // 보낸 뒤에 누르는 단추: 이 연구원의 지연·임박 주문 전부를 안내함으로 남긴다
   const orders = listed().filter(o => requesterOf(o) === name);
@@ -273,6 +277,7 @@ function renderDigestBox() {
     S.digestMsg = n + "건을 안내함으로 기록했어요." + (n < orders.length ? " (오늘 같은 채널로 이미 기록한 " + (orders.length - n) + "건은 건너뛰었어요.)" : "");
     render();
   });
+  copy.addEventListener("click", () => copyText(ta.value, copy, () => nudgeRecord(rec)));   // 복사 직후 "이 N건 안내함으로 기록"으로 (FR-19)
   box.replaceChildren(el("div", { class: "drawerhead" }, el("h2", {}, name + "님께 한 통으로 안내 (" + items.length + "건)"), close), ta,
     el("div", { class: "row" }, copy, ch, rec, el("span", { class: "sub" }, S.digestMsg || "사유는 비고·이메일 추출에서 가져왔어요. 보내기 전에 확인하세요. 이 앱은 메시지를 보내지 않아요. 보낸 뒤에 '안내함으로 기록'을 눌러 두세요.")));
   box.hidden = false;
@@ -301,9 +306,19 @@ function noticeFor(o, template, alt, info) {
   });
 }
 
-async function copyText(text, btn) {
-  try { await navigator.clipboard.writeText(text); btn.textContent = "복사됨"; setTimeout(() => (btn.textContent = "복사"), 1500); }
+// 복사한 뒤 onCopied가 있으면 불러 준다 (복사가 실제로 됐을 때만).
+async function copyText(text, btn, onCopied) {
+  try { await navigator.clipboard.writeText(text); btn.textContent = "복사됨"; setTimeout(() => (btn.textContent = "복사"), 1500); if (onCopied) onCopied(); }
   catch (e) { btn.textContent = "복사가 막혀 있어요. 직접 선택해 주세요"; }
+}
+
+// 안내문을 복사한 직후: 보낸 뒤 누를 "안내함으로 기록" 버튼을 눈에 띄게 하고 포커스를 옮긴다 (FR-19).
+// 자동으로 기록하지는 않는다: 앱은 실제로 보냈는지 모른다. 기록하지 않고 다른 주문으로 넘어가도 막지 않는다.
+function nudgeRecord(btn, hint) {
+  if (!btn || !btn.isConnected) return;
+  btn.classList.add("nudge");
+  if (hint && !hint.textContent) hint.textContent = "복사했어요. 안내문을 보낸 뒤 눌러 두세요.";
+  btn.focus();
 }
 
 function templateControls(onChange, o) {
@@ -331,10 +346,14 @@ function noticeBox(o, info) {
   let ctl;
   const refresh = () => { out.value = noticeFor(o, ctl ? ctl.tpl.value : S.notice.template, S.notice.alt, info); };
   ctl = templateControls(refresh, o);
-  copyBtn.addEventListener("click", () => copyText(out.value, copyBtn));
+  const nudge = el("span", { class: "sub nudgehint", "aria-live": "polite" });
+  copyBtn.addEventListener("click", () => copyText(out.value, copyBtn, () => {
+    const rec = [...$("detail").querySelectorAll('[data-screen-id="LS-31-A"] button')].find(b => b.textContent.trim() === "안내함으로 기록");
+    nudgeRecord(rec, nudge);
+  }));
   refresh();
   return el("div", { class: "noticebox", "data-screen-id": "LS-32-A" }, el("h3", {}, "안내문 만들기"), ...ctl,
-    el("label", {}, "안내문 (고쳐 쓸 수 있어요)", out), el("div", { class: "row" }, copyBtn),
+    el("label", {}, "안내문 (고쳐 쓸 수 있어요)", out), el("div", { class: "row" }, copyBtn, nudge),
     el("p", { class: "sub" }, "사유는 이메일 추출이나 비고 열에서 가져왔어요. 보내기 전에 확인하세요. 이 앱은 메시지를 보내지 않아요."));
 }
 
@@ -725,9 +744,11 @@ function informedBox(o) {
   const undo = el("button", { class: "quiet" }, "마지막 기록 취소");
   undo.disabled = !log.length;
   undo.addEventListener("click", () => { Informed.undo(S.informed, no); persist(); render(); });
+  // 기록 버튼을 상태 줄 바로 아래에 둔다 (FR-17): 좁은 상세 칸에서도 스크롤 없이 닿고, 기록이 쌓여도 위치가 변하지 않는다.
   return el("div", { class: "causebox informbox", "data-screen-id": "LS-31-A" }, el("h3", {}, "연구원 안내 기록"), el("p", {}, informedBadge(o), " ", line),
+    el("div", { class: "row" }, sel, rec), note,
     ...(log.length ? [el("ul", { class: "hist" }, ...log.slice().reverse().map(e => el("li", {}, e.date + " · " + e.channel + " · " + e.status + " 때 안내" + (e.note ? " · " + e.note : ""))))] : []),
-    el("div", { class: "row" }, sel, note, rec, undo),
+    el("div", { class: "row" }, undo),
     el("p", { class: "sub" }, "안내문을 보낸 뒤에 눌러 두세요. 납기가 바뀌거나 지연이 되면 '다시 안내'로 알려 줘요. 이 앱은 메시지를 보내지 않아요."));
 }
 
@@ -774,9 +795,10 @@ function renderDetail() {
     el("h2", {}, o["주문번호"]),
     el("p", {}, badge(o.status), " ", o.reason),
     S.edited[o["주문번호"]] ? el("p", { class: "edited" }, "이메일 기준으로 납기를 바꿨어요 (원래 값: " + S.edited[o["주문번호"]].from + ")") : el("span", {}),
+    informedBox(o), noticeBox(o), quickNoteBox(o),
     el("p", { class: "sub" }, "아래는 파일에 있던 원래 값이에요."), dl,
-    ...(S.schedule[NO(o)] ? [schedBlock(o)] : []),
-    o.status === "지연" ? causeBox(o) : el("span", {}), substBox(o), informedBox(o), quickNoteBox(o), noticeBox(o));
+    o.status === "지연" ? causeBox(o) : el("span", {}),
+    ...(S.schedule[NO(o)] ? [schedBlock(o)] : []), substBox(o));
 }
 
 // 파일을 읽으면서 알려 줄 것(건너뛴 줄, 잘림, 시트 선택)을 머리 아래에 보여 준다. 잘렸다는 사실은 눈에 띄게(경고색).
@@ -1177,6 +1199,23 @@ $("rulesApply").addEventListener("click", () => {
   S.soonRules = text; persist();
   $("rulesMsg").textContent = n + "개 규칙을 적용했어요." + (lines > n ? " (" + (lines - n) + "줄은 '키워드=일수' 형식이 아니라 건너뛰었어요.)" : "");
   if (S.rows.length && !missingRequired().length) compute();
+});
+// 다시 안내 기준 일수 (FR-18, RU-21-A): 1~30일. 바꾸면 안내 상태와 현황 막대가 바로 다시 계산된다.
+function applyReAlert(raw) {
+  const msg = $("reAlertMsg");
+  const r = Informed.parseDays(raw);
+  if (!r.ok) { msg.className = "sub msg-err"; msg.textContent = r.reason; return; }
+  S.reAlertDays = r.days; persist();
+  $("reAlertDays").value = String(r.days);
+  msg.className = "sub msg-ok"; msg.textContent = "마지막 안내 뒤 " + r.days + "일 동안 새 소식이 없으면 '다시 안내'로 표시해요.";
+  if (S.result) render();
+}
+$("reAlertApply").addEventListener("click", () => applyReAlert($("reAlertDays").value));
+$("reAlertDays").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); applyReAlert($("reAlertDays").value); } });
+$("reAlertReset").addEventListener("click", () => {
+  S.reAlertDays = null; persist(); $("reAlertDays").value = String(Informed.STALE_DAYS);
+  $("reAlertMsg").className = "sub msg-ok"; $("reAlertMsg").textContent = "기본값(" + Informed.STALE_DAYS + "일)으로 되돌렸어요.";
+  if (S.result) render();
 });
 $("emailClose").addEventListener("click", () => { $("emailPanel").hidden = true; });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("emailPanel").hidden) $("emailPanel").hidden = true; });

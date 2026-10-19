@@ -7,7 +7,7 @@
 //     informLog:  { 주문번호: [{ id, date, channel, status, due, note, createdAt, deletedAt? }] },   // append-only, 취소는 deletedAt 표시
 //     quickNotes: { 주문번호: [{ id, text, createdAt, deletedAt? }] },                               // 빠른 메모 (Phase 3, FR-12). 취소와 같은 방식으로 삭제 표시
 //     orderMeta:  { 주문번호: { reason?, causeOverride?, edited?{from,to}, updatedAt } },
-//     settings:   { notice, soonRules, updatedAt },
+//     settings:   { notice, soonRules, reAlertDays?, updatedAt },
 //     legacy:     { contacted, contactLog, subst, schedule } }                                        // 범위 밖 기능: 구조를 바꾸지 않고 보존
 //
 // 화면은 안내 기록·메모를 취소/삭제할 때 목록에서 빼기만 한다. 그 차이를 fromView가 알아채서 "지운 것"이 아니라 "삭제 표시(deletedAt)"로 남긴다.
@@ -98,8 +98,8 @@ function normalizeState(obj) {
     s.orderMeta[no] = meta;
   });
   if (plain(obj.settings)) {
-    const c = P.clean({ notice: obj.settings.notice, soonRules: obj.settings.soonRules });
-    s.settings = { notice: c.notice, soonRules: c.soonRules, updatedAt: str(obj.settings.updatedAt, 40) };
+    const c = P.clean({ notice: obj.settings.notice, soonRules: obj.settings.soonRules, reAlertDays: obj.settings.reAlertDays });
+    s.settings = { notice: c.notice, soonRules: c.soonRules, ...(c.reAlertDays ? { reAlertDays: c.reAlertDays } : {}), updatedAt: str(obj.settings.updatedAt, 40) };
   }
   const l = P.clean(plain(obj.legacy) ? obj.legacy : {});
   s.legacy = { contacted: l.contacted, contactLog: l.contactLog, subst: l.subst, schedule: l.schedule };
@@ -124,6 +124,7 @@ function toView(state) {
     if (m.edited) v.edited[no] = { from: m.edited.from, to: m.edited.to };
   });
   v.notice = st.settings.notice; v.soonRules = st.settings.soonRules;
+  if (st.settings.reAlertDays) v.reAlertDays = st.settings.reAlertDays;
   Object.assign(v, st.legacy);
   return P.clean(v);
 }
@@ -179,8 +180,8 @@ function fromView(rawView, prevState, opts = {}) {
     s.orderMeta[no] = m;
   });
 
-  const st = { notice: view.notice || null, soonRules: typeof view.soonRules === "string" ? view.soonRules : null };
-  const sameSettings = JSON.stringify([prev.settings.notice, prev.settings.soonRules]) === JSON.stringify([st.notice, st.soonRules]);
+  const st = { notice: view.notice || null, soonRules: typeof view.soonRules === "string" ? view.soonRules : null, ...(view.reAlertDays ? { reAlertDays: view.reAlertDays } : {}) };
+  const sameSettings = JSON.stringify([prev.settings.notice, prev.settings.soonRules, prev.settings.reAlertDays || null]) === JSON.stringify([st.notice, st.soonRules, st.reAlertDays || null]);
   s.settings = { ...st, updatedAt: sameSettings ? prev.settings.updatedAt : now };
 
   s.legacy = { contacted: view.contacted, contactLog: view.contactLog, subst: view.subst, schedule: view.schedule };
