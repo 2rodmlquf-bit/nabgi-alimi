@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld("app", {
   pickMailFolder: () => ipcRenderer.invoke("pick-mail-folder"),
   loadSampleMails: () => ipcRenderer.invoke("load-sample-mails"),
   loadState: () => ipcRenderer.invoke("state-load"),
+  stateInfo: () => ipcRenderer.invoke("state-info"),
   saveState: data => ipcRenderer.invoke("state-save", data),
   clearState: () => ipcRenderer.invoke("state-clear"),
 });

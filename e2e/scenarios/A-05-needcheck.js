@@ -37,8 +37,8 @@ module.exports = {
     await app.waitFor(async () => /^안내 /.test(await cell(4)), 4000);
     ctx.check("기록하면 '안내 MM-DD'로 바뀌고 현황 막대가 갱신된다", (await cell(4)) === "안내 10-12" && /미안내 14/.test(await bar()) && /완료 1/.test(await bar()), (await cell(4)) + " | " + (await bar()));
     const stateFile = path.join(app.userData, "state.json");
-    const saved = await app.waitFor(() => { try { const j = JSON.parse(fs.readFileSync(stateFile, "utf8")); return j.informed && j.informed[NO] ? j : null; } catch (e) { return null; } }, 5000);
-    ctx.check("저장된 기록의 상태는 '확인필요'다 (임박으로 잘못 남지 않는다)", !!saved && saved.informed[NO][0].status === "확인필요", saved ? JSON.stringify(saved.informed[NO][0]) : "저장 안 됨");
+    const saved = await app.waitFor(() => { try { const j = JSON.parse(fs.readFileSync(stateFile, "utf8")); return j.informLog && j.informLog[NO] ? j : null; } catch (e) { return null; } }, 5000);
+    ctx.check("저장된 기록의 상태는 '확인필요'다 (임박으로 잘못 남지 않는다)", !!saved && saved.informLog[NO][0].status === "확인필요", saved ? JSON.stringify(saved.informLog[NO][0]) : "저장 안 됨");
 
     // ---------- 연구원별 묶기: 필터 칩과 한 통 안내문 ----------
     await app.eval(`document.querySelector('#tbody tr:nth-child(${await rowIdx()})').children[7].click()`); await app.sleep(300);

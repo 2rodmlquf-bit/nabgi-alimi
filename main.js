@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { buildPayload, buildPrompt, parseMapping } = require("./src/mapping");
 const { MAX_CHARS, buildEmailPrompt, parseEmailResult } = require("./src/email");
-const { clean } = require("./src/persist");
+const { createStore } = require("./src/store");
 const { parseEml } = require("./src/eml");
 const { readXlsx } = require("./src/xlsx");
 const { parseCsv } = require("./src/csv");
@@ -188,26 +188,16 @@ ipcMain.handle("save-file", async (e, { name, text, ext }) => {
   catch (err) { return { ok: false, error: "저장하지 못했어요: " + err.message }; }
 });
 
-// 직접 고친 값(납기 변경, 사유, 원인 지정, 안내문 선택) 저장. 이 컴퓨터의 앱 데이터 폴더에 JSON으로 둔다 (암호화하지 않음).
-const stateFile = () => path.join(app.getPath("userData"), "state.json");
+// 직접 고친 값(납기 변경, 사유, 원인 지정, 안내 기록, 안내문 선택 …) 저장. 이 컴퓨터의 앱 데이터 폴더에 JSON으로 둔다 (암호화하지 않음).
+// 파일을 다루는 일(읽기, 백업, 예전 형식 이전, 손상 파일 보관, 임시 파일 후 교체)은 모두 src/store가 한다.
+// 여기서는 화면(IPC)과 저장소를 잇기만 한다. 저장 방식을 바꿀 때는 createStore의 mode만 바꾼다 (docs/DATA_MODEL.md).
+let store = null;
+const getStore = () => store || (store = createStore({ mode: "local", dir: app.getPath("userData") }));
 
-ipcMain.handle("state-load", () => {
-  try { return clean(JSON.parse(fs.readFileSync(stateFile(), "utf8"))); } catch (e) { return clean(null); }
-});
-
-ipcMain.handle("state-save", (e, data) => {
-  const text = JSON.stringify(clean(data));
-  if (text.length > 2000000) return { ok: false, error: "저장할 내용이 너무 큽니다." };
-  try {
-    fs.mkdirSync(path.dirname(stateFile()), { recursive: true });
-    const tmp = stateFile() + ".tmp";
-    fs.writeFileSync(tmp, text, "utf8");
-    fs.renameSync(tmp, stateFile()); // 쓰다가 꺼져도 기존 파일이 깨지지 않게 임시 파일을 거친다
-    return { ok: true };
-  } catch (err) { return { ok: false, error: "저장하지 못했습니다: " + err.message }; }
-});
-
-ipcMain.handle("state-clear", () => { try { fs.unlinkSync(stateFile()); } catch (e) {} return { ok: true }; });
+ipcMain.handle("state-load", async () => (await getStore().load()).view);
+ipcMain.handle("state-info", async () => { await getStore().load(); return getStore().info(); });   // 알림(이전·손상·읽기 전용)을 화면에 알리려고
+ipcMain.handle("state-save", (e, data) => getStore().save(data));
+ipcMain.handle("state-clear", () => getStore().clear());
 
 app.whenReady().then(createWindow);
 app.on("window-all-closed", () => app.quit());

@@ -21,15 +21,21 @@ async function waitFor(fn, ms = 10000, step = 120) {
 // 최소 CDP 클라이언트: 명령 보내기, 이벤트 받기
 function connectCdp(wsUrl) {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(wsUrl); let id = 0; const pending = new Map(), handlers = {};
+    const ws = new WebSocket(wsUrl); let id = 0, closed = false; const pending = new Map(), handlers = {};
     ws.onmessage = e => {
       const m = JSON.parse(e.data);
-      if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+      if (m.id && pending.has(m.id)) { pending.get(m.id).resolve(m); pending.delete(m.id); }
       else if (m.method && handlers[m.method]) handlers[m.method].forEach(h => h(m.params));
     };
+    ws.onclose = () => { closed = true; pending.forEach(p => p.reject(new Error("앱과의 연결이 닫혔어요"))); pending.clear(); };   // 기다리던 명령이 영원히 멈추지 않게
     ws.onerror = reject;
     ws.onopen = () => resolve({
-      send: (method, params = {}) => new Promise(r => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); }),
+      send: (method, params = {}, timeoutMs = 15000) => new Promise((res, rej) => {
+        if (closed) return rej(new Error("앱과의 연결이 닫혔어요 (" + method + ")"));
+        const i = ++id; const timer = setTimeout(() => { pending.delete(i); rej(new Error("앱이 " + timeoutMs / 1000 + "초 안에 응답하지 않았어요 (" + method + ")")); }, timeoutMs);
+        pending.set(i, { resolve: m => { clearTimeout(timer); res(m); }, reject: er => { clearTimeout(timer); rej(er); } });
+        ws.send(JSON.stringify({ id: i, method, params }));
+      }),
       on: (method, fn) => { (handlers[method] = handlers[method] || []).push(fn); },
       close: () => ws.close(),
     });

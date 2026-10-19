@@ -42,7 +42,9 @@
       Object.entries(saved.informed).forEach(([no, arr]) => {
         if (!Array.isArray(arr)) return;
         const ok = arr.filter(e => e && ISO.test(e.date || "") && (e.status === "지연" || e.status === "임박" || e.status === "확인필요"))
-          .map(e => ({ date: e.date, channel: CHANNELS.includes(e.channel) ? e.channel : "기타", status: e.status, due: String(e.due == null ? "" : e.due).slice(0, 40), note: String(e.note || "").slice(0, 200) }));
+          .map(e => ({ date: e.date, channel: CHANNELS.includes(e.channel) ? e.channel : "기타", status: e.status, due: String(e.due == null ? "" : e.due).slice(0, 40), note: String(e.note || "").slice(0, 200),
+            // 저장소가 붙인 고유 id와 만든 시각은 화면을 거쳐 다시 저장될 때 같은 기록임을 알려 주므로 버리지 않는다
+            ...(typeof e.id === "string" && e.id ? { id: e.id.slice(0, 64) } : {}), ...(typeof e.createdAt === "string" && e.createdAt ? { createdAt: e.createdAt.slice(0, 40) } : {}) }));
         if (ok.length) s.informed[no] = ok.slice(-50);
       });
     }

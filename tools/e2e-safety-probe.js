@@ -76,7 +76,7 @@ async function waitFor(fn, ms = 10000) { const t = Date.now(); while (Date.now()
 
     const tmpState = path.join(userData, "state.json");
     const saved = fs.existsSync(tmpState) ? JSON.parse(fs.readFileSync(tmpState, "utf8")) : null;
-    check("임시 저장 폴더에 state.json이 생기고 안내 기록이 들어 있다", !!saved && Object.keys(saved.informed || {}).length === 1, saved ? "informed 주문 " + Object.keys(saved.informed || {}).length + "건" : "파일 없음");
+    check("임시 저장 폴더에 state.json이 생기고 안내 기록이 들어 있다", !!saved && Object.keys(saved.informLog || {}).length === 1, saved ? "informLog 주문 " + Object.keys(saved.informLog || {}).length + "건" : "파일 없음");
   } catch (e) {
     check("점검 중 오류 없음", false, e.message);
   } finally {

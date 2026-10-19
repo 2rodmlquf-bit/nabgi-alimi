@@ -20,7 +20,9 @@
 | 의존성 설치 | `npm ci` |
 | 앱 실행 | `npm start` 또는 `납기알리미-실행.bat` |
 | 자동 테스트 | `npm test` |
+| E2E (화면까지 실제 앱으로) | `npm run test:e2e` (시나리오 8개, 약 5분). 일부만: `node e2e/run.js --only S-02` |
 | E2E 안전 점검 | `npm run probe:e2e-safety` |
+| 저장 파일 이전 리허설 | `node tools/migration-rehearsal.js [예전 형식 저장 파일]` (복사본으로만 시험, 원본은 읽기만) |
 | 설치 파일 만들기 | `npm run dist` (결과 `dist/`, 약 111MB, 저장소에는 넣지 않음) |
 | 화면 캡처 | `tools/capture.js` 머리말 참고 |
 
@@ -34,7 +36,8 @@
 |---|---|
 | 기준 태그 | `baseline-v0.4.0-informed` (커밋 `2c2dbbe`) |
 | 기준 테스트 | **141개 통과** (약 0.3초) |
-| Phase 0에서 추가 | `test/runtimeEnv.test.js` 4개 → **현재 145개 통과** |
+| Phase 0에서 추가 | `test/runtimeEnv.test.js` 4개 → 145개 |
+| Phase 2 끝 | 단위 **222개** 통과 (저장 모델 17, 저장소 계약 22, 로컬 파일 저장소 13, 열 추측 7 등 포함). E2E 시나리오 8개 |
 
 ## 3. 개발·테스트용 환경변수
 
@@ -53,7 +56,7 @@
 - 위치: `%APPDATA%\delivery-watch\state.json`
 - 2026-10-19 확인 당시: 884바이트, 마지막 수정 2026-10-12 16:35, 해시 앞 16자 `96b7d3ee927196af`
 - `npm run probe:e2e-safety`가 앞뒤 지문을 비교해 **바뀌지 않았는지** 확인한다. 이번 Phase 0 점검 결과: 바뀌지 않았다.
-- 이 파일은 안내 기록 같은 실제 작업 기록이 들어 있을 수 있으니, Phase 2의 마이그레이션 시험 전에 **복사본을 만들어 둔다.**
+- 2026-10-19 백업: `.backup/state.v0.2026-10-19.json` (git이 무시하는 폴더). 이 백업의 복사본으로 새 저장소를 시험했다 (`tools/migration-rehearsal.js`, 모두 통과). **실제 파일은 새 버전을 처음 실행할 때 앱이 직접 이전한다** (원본을 `state.v0.bak.json`으로 먼저 보관). 저장 파일의 모양과 동작은 `docs/DATA_MODEL.md`.
 
 ## 5. 브랜치와 커밋 규칙
 
