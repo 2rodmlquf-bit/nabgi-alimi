@@ -8,6 +8,9 @@ const fs = require("fs"), path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
 const ELECTRON = path.join(ROOT, "node_modules", "electron", "dist", "electron.exe");
+// NABGI_E2E_EXE에 설치 파일이 만든 실행 파일(dist/win-unpacked/납기 알리미.exe)을 주면, 개발용 Electron 대신 그것으로 같은 시험을 돌린다 (Phase 8: 패키징된 앱 확인).
+const PACKED_EXE = process.env.NABGI_E2E_EXE && path.isAbsolute(process.env.NABGI_E2E_EXE) ? process.env.NABGI_E2E_EXE : null;
+const appCommand = () => (PACKED_EXE ? { cmd: PACKED_EXE, args: [] } : { cmd: ELECTRON, args: [ROOT] });
 const SAMPLE_ORDERS = path.join(ROOT, "샘플주문.csv");
 const REAL_STATE = path.join(process.env.APPDATA || "", "delivery-watch", "state.json");
 
@@ -54,7 +57,7 @@ async function launchApp({ userData, openFile } = {}) {
   let port, child, target;
   for (let attempt = 0; attempt < 6; attempt++) {
     port = portSeed++;
-    child = spawn(ELECTRON, [ROOT, `--remote-debugging-port=${port}`], {
+    child = spawn(appCommand().cmd, [...appCommand().args, `--remote-debugging-port=${port}`], {
       env: { ...process.env, NABGI_E2E: "1", NABGI_USER_DATA: dir, NABGI_OPEN_FILE: openFile || "" }, stdio: "ignore",
     });
     let exited = false; child.on("exit", () => { exited = true; });
@@ -123,4 +126,4 @@ async function launchApp({ userData, openFile } = {}) {
 
 const fingerprint = f => { try { const c = require("crypto").createHash("sha256").update(fs.readFileSync(f)).digest("hex").slice(0, 16); const s = fs.statSync(f); return `${c}:${s.size}:${s.mtimeMs}`; } catch (e) { return "(없음)"; } };
 
-module.exports = { ELECTRON, ROOT, SAMPLE_ORDERS, REAL_STATE, sleep, waitFor, launchApp, fingerprint };
+module.exports = { appCommand, PACKED_EXE, ELECTRON, ROOT, SAMPLE_ORDERS, REAL_STATE, sleep, waitFor, launchApp, fingerprint };

@@ -2,7 +2,7 @@
 // 단위 시험(test/stability.test.js, ordersFile.test.js)이 못 보는 "화면에서 어떻게 보이는가"를 확인한다.
 const fs = require("fs"), path = require("path"), os = require("os");
 const { spawn } = require("child_process");
-const { ELECTRON, ROOT, sleep } = require("../helpers");
+const { appCommand } = require("../helpers");
 const { buildCsv } = require("../../tools/make-large");
 
 const OUT = path.join(__dirname, "..", "out");
@@ -16,7 +16,7 @@ module.exports = {
     // ---------- 같은 앱을 두 개 띄움 (G-7) ----------
     const app = await ctx.launch();
     await app.click("#sampleBtn"); await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
-    const second = spawn(ELECTRON, [ROOT], { env: { ...process.env, NABGI_E2E: "1", NABGI_USER_DATA: app.userData, NABGI_OPEN_FILE: "" }, stdio: "ignore" });
+    const second = spawn(appCommand().cmd, appCommand().args, { env: { ...process.env, NABGI_E2E: "1", NABGI_USER_DATA: app.userData, NABGI_OPEN_FILE: "" }, stdio: "ignore" });
     const exit = await new Promise(res => { const t = setTimeout(() => { try { second.kill(); } catch (e) { /* 이미 끝남 */ } res({ code: "시간 초과" }); }, 12000); second.on("exit", code => { clearTimeout(t); res({ code }); }); });
     ctx.check("G-7 같은 저장 폴더로 앱을 하나 더 띄우면 새 창 없이 곧바로 끝난다 (두 앱이 같은 파일을 덮어쓰지 않게)", exit.code === 0, "종료 코드 " + exit.code);
     ctx.check("G-7 먼저 떠 있던 앱은 그대로 쓸 수 있다", (await app.count("#tbody tr")) === 15);

@@ -1,11 +1,17 @@
 // 실제 앱(main.js)을 임시 저장 폴더로 띄워 화면을 캡처한다. 사용자의 state.json은 건드리지 않는다.
 // 사용 (Electron으로 실행해야 한다):
 //   APP_ROOT=<앱 폴더 절대 경로> OUT_DIR=<저장할 폴더 절대 경로> node_modules/electron/dist/electron.exe tools/capture.js
-// README용 캡처 8~14번 화면을 만든다. 샘플 기준일(2026-10-12)과 샘플 주문의 판정 결과에 맞춰 쓴 흐름이다.
-const { app, BrowserWindow } = require("electron");
+// README용 캡처(00~03, 06~17번)를 만든다. 04·05번(메일 폴더, 공급사 엑셀)은 따로 찍은 것을 그대로 쓴다.
+// 샘플 기준일(2026-10-12)과 샘플 주문의 판정 결과에 맞춰 쓴 흐름이다.
+const { app, BrowserWindow, nativeTheme } = require("electron");
 const path = require("path"), fs = require("fs"), os = require("os");
 const ROOT = process.env.APP_ROOT, OUT = process.env.OUT_DIR;
-app.setPath("userData", fs.mkdtempSync(path.join(os.tmpdir(), "nabgi-cap-")));
+const userData = fs.mkdtempSync(path.join(os.tmpdir(), "nabgi-cap-"));
+app.setPath("userData", userData);
+// 17번(엑셀 열기)에 쓸 5,001줄 가상 엑셀. 열기 대화상자는 자동화할 수 없어서 E2E 우회 경로를 쓴다 (임시 저장 폴더라서 안전하다).
+const bigXlsx = path.join(userData, "주문목록-5001줄.xlsx");
+fs.writeFileSync(bigXlsx, require(path.join(ROOT, "make-sample-orders-xlsx.js")).buildOrderFixtures()["09-5001줄.xlsx"]);
+process.env.NABGI_E2E = "1"; process.env.NABGI_USER_DATA = userData; process.env.NABGI_OPEN_FILE = bigXlsx;
 require(path.join(ROOT, "main.js"));
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -39,8 +45,12 @@ app.whenReady().then(async () => {
   await sleep(1500);
   win = BrowserWindow.getAllWindows()[0];
   win.setContentSize(1266, 900);
+  nativeTheme.themeSource = "light";
+  await shotFixed("00-첫화면", 900, 0, null);                       // 불러온 파일이 없는 첫 화면 (API 키 단추 없음)
   await js("document.getElementById('sampleBtn').click()");
   await sleep(800);
+  await pickRow("PO-2026-1001"); await sleep(300);
+  await shotFixed("01-예외목록", 900, 0, null);                      // 안내 현황 막대, 요약 카드, 표, 주문 상세
 
   // 1) 연구원 안내 기록: 1001은 10-12에, 1003은 10-14에 기록하고 10-19로 넘기면 안내 완료·다시 안내·미안내가 모두 보인다
   await pickRow("PO-2026-1001"); await sleep(200);
@@ -84,6 +94,33 @@ app.whenReady().then(async () => {
   await js(`(()=>{const a=[...document.querySelectorAll('a,button')].find(x=>x.textContent.includes('품목별 임박 기준')); a.click()})()`); await sleep(400);
   await shotFixed("13-품목별임박기준", 900, 0, null);
   await js(`(()=>{const a=[...document.querySelectorAll('a,button')].find(x=>x.textContent.includes('품목별 임박 기준')); a.click()})()`); await sleep(300);
+
+  // 8) 빠른 메모 (FR-12)
+  await pickRow("PO-2026-1002"); await sleep(300);
+  await js(`(()=>{const ta=document.querySelector('.notebox textarea'); ta.value='전화로 들음: 통관 서류 보완 중이라 10월 말 예상'; })()`);
+  await clickBtn(".notebox button", "메모 남기기"); await sleep(500);
+  await shotFixed("15-빠른메모", 1000, 0, ".notebox");
+
+  // 9) 탭 화면과 다크 모드 (색이 바뀐 뒤의 모습)
+  await resetView(); await js("window.scrollTo(0,0)");
+  await js("document.getElementById('tabAna').click()"); await sleep(500); await shotFixed("02-지연분석", 900, 0, null);
+  await js("document.getElementById('tabContact').click()"); await sleep(500); await shotFixed("03-오늘연락할곳", 900, 0, null);
+  await js("document.getElementById('tabReport').click()"); await sleep(500); await shotFixed("06-보고서", 900, 0, null);
+  await js("document.getElementById('tabList').click()"); await sleep(400);
+  nativeTheme.themeSource = "dark"; await sleep(600);
+  await pickRow("PO-2026-1001"); await sleep(300);
+  await shotFixed("07-다크모드", 900, 0, null);
+  nativeTheme.themeSource = "light"; await sleep(600);
+
+  // 10) 다시 안내 기준 설정 (FR-18): 품목별 임박 기준 패널 아래쪽
+  await js(`(()=>{const a=[...document.querySelectorAll('a,button')].find(x=>x.textContent.includes('품목별 임박 기준')); a.click()})()`); await sleep(400);
+  await shotFixed("16-다시안내기준", 900, 0, null);
+  await js(`(()=>{const a=[...document.querySelectorAll('a,button')].find(x=>x.textContent.includes('품목별 임박 기준')); a.click()})()`); await sleep(300);
+
+  // 11) 엑셀 목록 열기 (FR-07): 5,001줄이라 "일부만 읽었다"는 안내가 나온다
+  await js("document.getElementById('openBtn').click()"); await sleep(2500);
+  await shotFixed("17-엑셀열기", 900, 0, null);
+  await js("document.getElementById('sampleBtn').click()"); await sleep(800); await setDate("2026-10-12"); await sleep(300);
 
   // 7) 부분 납품
   const partNo = await js(`(()=>{const r=[...document.querySelectorAll('#tbody tr')].find(r=>r.innerText.includes('부분입고')); r.click(); return r.innerText})()`); await sleep(300);
