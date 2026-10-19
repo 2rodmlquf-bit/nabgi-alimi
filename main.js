@@ -8,6 +8,16 @@ const { parseEml } = require("./src/eml");
 const { readXlsx } = require("./src/xlsx");
 const { parseCsv } = require("./src/csv");
 const { safeFileName } = require("./src/report");
+const runtimeEnv = require("./src/runtimeEnv");
+
+// 개발·E2E 테스트용 환경변수 (src/runtimeEnv.js). 환경변수가 없는 일반 실행에는 영향이 없다.
+// 저장 경로(state.json, 키 파일)는 모두 app.getPath("userData")를 거치므로 여기서 바꾸면 한꺼번에 분리된다.
+if (!runtimeEnv.e2eIsSafe(process.env)) {
+  console.error("NABGI_E2E=1 에는 NABGI_USER_DATA(절대 경로)가 꼭 필요해요. 실제 사용자 데이터를 지키려고 시작하지 않습니다.");
+  process.exit(1);
+}
+const userDataOverride = runtimeEnv.userDataOverride(process.env);
+if (userDataOverride) app.setPath("userData", userDataOverride);
 
 const MODEL = "claude-haiku-5-5"; // 열 매핑은 가벼운 모델로 충분하다 (바꿀 때는 이 한 줄만)
 const keyFile = () => path.join(app.getPath("userData"), "claude-key.bin");
@@ -37,6 +47,8 @@ function createWindow() {
 }
 
 ipcMain.handle("open-csv", async () => {
+  const forced = runtimeEnv.e2eOpenFile(process.env); // E2E 모드에서만: 대화상자 대신 지정한 파일을 연다
+  if (forced) return { name: path.basename(forced), text: decode(fs.readFileSync(forced)) };
   const r = await dialog.showOpenDialog({ title: "주문 목록 CSV 선택", properties: ["openFile"], filters: [{ name: "CSV", extensions: ["csv"] }] });
   if (r.canceled || !r.filePaths[0]) return null;
   return { name: path.basename(r.filePaths[0]), text: decode(fs.readFileSync(r.filePaths[0])) };
