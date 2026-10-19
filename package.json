@@ -7,7 +7,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "dist": "electron-builder --win nsis"
+    "dist": "electron-builder --win nsis",
+    "probe:e2e-safety": "node tools/e2e-safety-probe.js"
   },
   "build": {
     "appId": "local.deliverywatch.app",
