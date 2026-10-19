@@ -231,3 +231,12 @@ th.sortable:hover { color: var(--accent); }
 .informbar label { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 .informbox .hist { margin: 6px 0; padding-left: 18px; font-size: 13px; }
 .informbox .row { flex-wrap: wrap; }
+
+/* 빠른 메모 */
+.badge.memo { background: var(--sky-soft); color: var(--ink); }
+.notebox textarea { width: 100%; }
+.notebox .hist { margin: 6px 0 0; padding: 0; list-style: none; font-size: 13px; }
+.notebox .hist li { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.notebox .hist li:last-child { border-bottom: 0; }
+.notebox .nt { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.notebox .ntext { flex: 1; white-space: pre-wrap; overflow-wrap: anywhere; }
