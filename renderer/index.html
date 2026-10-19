@@ -126,6 +126,16 @@
     <button id="rulesSample" class="quiet">샘플 기준 넣기</button>
     <span id="rulesMsg" class="sub"></span>
   </div>
+  <div class="block" data-screen-id="RU-21-A">
+    <h3>다시 안내 기준</h3>
+    <p class="sub">지연 중이거나 납기를 모르는 주문은, 마지막으로 연구원에게 안내한 뒤 <b>이 일수</b>가 지나도록 새 소식을 알리지 않으면 "다시 안내"로 표시해요. 1~30일, 기본 7일. (납기가 바뀌거나 임박에서 지연이 되면 일수와 상관없이 다시 안내로 표시해요.)</p>
+    <div class="row">
+      <label>일수 <input type="number" id="reAlertDays" min="1" max="30" step="1" value="7" inputmode="numeric" aria-describedby="reAlertMsg"></label>
+      <button id="reAlertApply" class="primary">적용</button>
+      <button id="reAlertReset" class="quiet">기본값(7일)으로</button>
+      <span id="reAlertMsg" class="sub" role="status"></span>
+    </div>
+  </div>
 </section>
 
 <section id="mapPanel" class="panel" data-screen-id="MP-11-M" hidden>
@@ -147,6 +157,7 @@
 </section>
 
 <main id="result" hidden>
+  <div id="informBar" class="informbar" data-screen-id="LS-22-A" hidden></div>
   <div class="cards" data-screen-id="LS-21-A">
     <div class="card late"><span>지연</span><b id="nLate">0</b></div>
     <div class="card soon"><span>임박</span><b id="nSoon">0</b></div>
@@ -162,7 +173,6 @@
     <input type="search" id="q" placeholder="주문번호·품목·공급사·요청자로 검색" autocomplete="off" spellcheck="false">
     <span id="qInfo" class="sub"></span>
   </div>
-  <div id="informBar" class="informbar" data-screen-id="LS-22-A" hidden></div>
   <div id="filterChip" class="chipline" data-screen-id="LS-23-A" hidden></div>
   <section id="digestBox" class="panel" data-screen-id="LS-23-A" hidden></section>
   <div id="pickBar" class="pickbar" data-screen-id="LS-24-A" hidden></div>

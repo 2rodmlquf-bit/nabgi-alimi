@@ -84,6 +84,8 @@ async function launchApp({ userData, openFile } = {}) {
       if (!ok) throw new Error(`누를 버튼이 없어요: ${scope} "${text}"`);
     },
     setValue: (sel, value, event = "change") => app.eval(`(() => { const e = document.querySelector(${q(sel)}); e.value = ${q(String(value))}; e.dispatchEvent(new Event(${q(event)}, { bubbles: true })); })()`),
+    // 창 크기를 흉내 낸다 (레이아웃·미디어 쿼리가 이 크기로 계산된다). 끝나면 앱을 닫으므로 되돌릴 필요 없다.
+    viewport: (width, height) => cdp.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false }),
     screenshot: async file => { const r = await cdp.send("Page.captureScreenshot", { format: "png" }); fs.writeFileSync(file, Buffer.from(r.result.data, "base64")); },
     close: async () => { try { cdp.close(); } catch (e) { /* 이미 닫힘 */ } killTree(child.pid); await sleep(700); },
   };
