@@ -7,6 +7,7 @@ const { createStore } = require("./src/store");
 const { parseEml } = require("./src/eml");
 const { readXlsx } = require("./src/xlsx");
 const { parseCsv } = require("./src/csv");
+const OrdersFile = require("./src/ordersFile");
 const { safeFileName } = require("./src/report");
 const runtimeEnv = require("./src/runtimeEnv");
 
@@ -52,6 +53,22 @@ ipcMain.handle("open-csv", async () => {
   const r = await dialog.showOpenDialog({ title: "주문 목록 CSV 선택", properties: ["openFile"], filters: [{ name: "CSV", extensions: ["csv"] }] });
   if (r.canceled || !r.filePaths[0]) return null;
   return { name: path.basename(r.filePaths[0]), text: decode(fs.readFileSync(r.filePaths[0])) };
+});
+
+// 주문 목록 열기: CSV와 엑셀(.xlsx). CSV는 예전처럼 { name, text }, 엑셀은 읽어서 { name, columns, rows, notes }로 돌려준다.
+// 읽을 수 없으면 { name, error }. 파일은 읽기만 한다.
+function readOrderFile(file) {
+  const buf = fs.readFileSync(file), name = path.basename(file);
+  if (/\.csv$/i.test(name) && buf.length <= OrdersFile.MAX_FILE) return { name, text: decode(buf) };
+  const r = OrdersFile.readOrders(name, buf, { decode });
+  return r.ok ? r : { name, error: r.error };
+}
+ipcMain.handle("open-orders", async () => {
+  const forced = runtimeEnv.e2eOpenFile(process.env);
+  if (forced) return readOrderFile(forced);
+  const r = await dialog.showOpenDialog({ title: "주문 목록 선택", properties: ["openFile"], filters: [{ name: "엑셀·CSV", extensions: ["xlsx", "csv"] }] });
+  if (r.canceled || !r.filePaths[0]) return null;
+  return readOrderFile(r.filePaths[0]);
 });
 
 ipcMain.handle("load-sample", () => {

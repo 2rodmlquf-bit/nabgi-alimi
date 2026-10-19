@@ -779,9 +779,26 @@ function renderDetail() {
     o.status === "지연" ? causeBox(o) : el("span", {}), substBox(o), informedBox(o), quickNoteBox(o), noticeBox(o));
 }
 
+// 파일을 읽으면서 알려 줄 것(건너뛴 줄, 잘림, 시트 선택)을 머리 아래에 보여 준다. 잘렸다는 사실은 눈에 띄게(경고색).
+function showFileNote(file) {
+  const box = $("fileNote");
+  const notes = file.notes || [];
+  if (!notes.length && !(file.choices && file.choices.length > 1)) { box.hidden = true; box.replaceChildren(); return; }
+  const kids = notes.map(n => el("p", { class: /까지만/.test(n) ? "warnline" : "sub" }, n));
+  if (file.choices && file.choices.length > 1) {
+    const sel = el("select", { "aria-label": "읽을 시트" }, ...file.choices.map((c, i) => el("option", { value: String(i) }, c.sheetName + " (" + c.rows.length + "건)")));
+    sel.value = String(Math.max(0, file.choices.findIndex(c => c.sheetName === file.sheetName)));
+    sel.addEventListener("change", () => { const c = file.choices[+sel.value]; load({ name: file.name, ...c, choices: file.choices }, false); });
+    kids.push(el("label", { class: "sheetpick" }, "다른 시트에도 표가 있어요: ", sel));
+  }
+  box.replaceChildren(...kids); box.hidden = false;
+}
+
 function load(file, isSample) {
-  const parsed = Csv.csvToObjects(file.text);
-  if (!parsed.columns.length || !parsed.rows.length) { $("fileName").textContent = "읽을 수 있는 행이 없어요. CSV 파일이 맞는지 확인해 주세요."; return; }
+  if (file.error) { $("fileName").textContent = file.name + " · " + file.error; showFileNote({}); return; }
+  const parsed = file.columns ? { columns: file.columns, rows: file.rows } : Csv.csvToObjects(file.text);   // 엑셀은 읽어서 표로 오고, CSV는 글자로 온다
+  if (!parsed.columns.length || !parsed.rows.length) { $("fileName").textContent = "읽을 수 있는 행이 없어요. 주문 목록 파일이 맞는지 확인해 주세요."; showFileNote({}); return; }
+  showFileNote(file);
   S.name = file.name; S.columns = parsed.columns; S.rows = parsed.rows; S.selected = null;
   S.mapping = guessMapping(S.columns); S.ai = {}; S.edited = {};
   S.reasons = {}; S.causeOverride = {}; S.filter = {}; S.view = "list"; S.bulk = null; S.picked = new Set(); S.q = ""; $("q").value = ""; S.sort = null;
@@ -794,7 +811,7 @@ function load(file, isSample) {
   } else { $("mapPanel").hidden = true; applySaved(); compute(); }
 }
 
-$("openBtn").addEventListener("click", async () => { const f = await window.app.openCsv(); if (f) load(f, false); });
+$("openBtn").addEventListener("click", async () => { const f = await window.app.openOrders(); if (f) load(f, false); });
 $("sampleBtn").addEventListener("click", async () => load(await window.app.loadSample(), true));
 $("today").addEventListener("change", () => S.rows.length && !missingRequired().length && compute());
 $("soon").addEventListener("change", () => S.rows.length && !missingRequired().length && compute());
