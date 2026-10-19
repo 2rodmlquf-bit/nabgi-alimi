@@ -1,5 +1,7 @@
 # 납기 알리미
 
+[![CI](https://github.com/2rodmlquf-bit/nabgi-alimi/actions/workflows/ci.yml/badge.svg)](https://github.com/2rodmlquf-bit/nabgi-alimi/actions/workflows/ci.yml)
+
 > 지연은 막을 수 없어도, **지연을 아는 시점과 연구원에게 알리는 시점의 간격**은 줄일 수 있다는 문제 정의에서 출발한 Windows 데스크톱 앱.
 > MRO 물류 업무 경험에서 출발한 **포트폴리오·연습용 프로토타입**이고, 데이터는 모두 가상입니다.
 
