@@ -180,9 +180,68 @@ test("크기 상한: 저장 글자 수가 2,000,000자를 넘으면 거부한다
   assert.equal(Core.exceedsLimit(huge), true);
 });
 
-test("quickNotes: 빠른 메모(Phase 3) 자리는 지금도 저장·검증되고, 뷰가 모르는 동안에는 이전 값을 그대로 둔다", () => {
-  const prev = { ...Core.emptyState(), quickNotes: { A: [{ id: "n1", text: "전화로 들음", createdAt: T1 }] } };
-  const s = Core.fromView({ ...clean(null), reasons: { A: "x" } }, prev, { now: T2, newId: ids });
-  assert.deepEqual(s.quickNotes, prev.quickNotes);
-  assert.deepEqual(Core.normalizeState(prev).quickNotes.A.map(x => x.text), ["전화로 들음"]);
+test("quickNotes 검증: 저장된 빠른 메모의 깨진 항목은 버리고 정상 항목은 남긴다", () => {
+  const st = Core.normalizeState({ schemaVersion: 1, quickNotes: { A: [{ id: "n1", text: "전화로 들음", createdAt: T1 }, { id: "", text: "id 없음" }, { id: "n3", text: "" }, null, { id: "n4", text: 7 }], B: "x" } });
+  assert.deepEqual(st.quickNotes.A.map(x => x.text), ["전화로 들음"]);
+  assert.equal(st.quickNotes.B, undefined);
+});
+
+test("빠른 메모 뷰 → 상태: 새 메모에 id·createdAt이 붙고, 같은 뷰를 다시 저장해도 id가 그대로다", () => {
+  const view = { ...clean(null), quickNotes: { A: [{ text: "첫째", createdAt: T1 }, { text: "둘째", createdAt: T2 }] } };
+  const s1 = Core.fromView(view, null, { now: T3, newId: ids });
+  assert.equal(s1.quickNotes.A.length, 2);
+  s1.quickNotes.A.forEach(n => { assert.ok(n.id); assert.equal(n.deletedAt, undefined); });
+  assert.deepEqual(s1.quickNotes.A.map(n => n.createdAt), [T1, T2]);          // 화면이 준 시각을 쓴다
+  const back = Core.toView(s1);
+  assert.deepEqual(back.quickNotes.A.map(n => n.text), ["첫째", "둘째"]);
+  assert.ok(back.quickNotes.A.every(n => n.id && n.createdAt));
+  const s2 = Core.fromView(back, s1, { now: "2026-10-20T00:00:00.000Z", newId: ids });
+  assert.deepEqual(s2.quickNotes.A.map(n => n.id), s1.quickNotes.A.map(n => n.id));
+});
+
+test("빠른 메모 삭제: 뷰에서 빠진 메모는 삭제 표시(deletedAt)가 남고 화면에는 보이지 않는다", () => {
+  const s1 = Core.fromView({ ...clean(null), quickNotes: { A: [{ text: "첫째", createdAt: T1 }, { text: "둘째", createdAt: T2 }] } }, null, { now: T1, newId: ids });
+  const v = Core.toView(s1); v.quickNotes.A.shift();                           // '첫째'를 지움
+  const s2 = Core.fromView(v, s1, { now: T3, newId: ids });
+  assert.equal(s2.quickNotes.A.length, 2);
+  assert.equal(s2.quickNotes.A[0].deletedAt, T3);
+  assert.equal(s2.quickNotes.A[1].deletedAt, undefined);
+  assert.deepEqual(Core.toView(s2).quickNotes.A.map(n => n.text), ["둘째"]);
+  const v2 = Core.toView(s2); delete v2.quickNotes.A;                          // 모두 지움
+  assert.deepEqual(Core.toView(Core.fromView(v2, s2, { now: T3, newId: ids })).quickNotes, {});
+});
+
+test("빠른 메모는 안내 기록과 서로 영향을 주지 않는다 (한쪽을 지워도 다른 쪽은 그대로)", () => {
+  const view = { ...clean(null), informed: { A: [ent("2026-10-10")] }, quickNotes: { A: [{ text: "메모", createdAt: T1 }] } };
+  const s1 = Core.fromView(view, null, { now: T1, newId: ids });
+  const v = Core.toView(s1); delete v.quickNotes.A;
+  const s2 = Core.fromView(v, s1, { now: T2, newId: ids });
+  assert.equal(Core.toView(s2).informed.A.length, 1);                          // 안내 기록은 그대로
+  assert.equal(s2.informLog.A[0].deletedAt, undefined);
+  assert.deepEqual(Core.toView(s2).quickNotes, {});
+});
+
+test("빠른 메모 상한: 살아 있는 메모는 주문당 50건, 넘친 오래된 것은 삭제 표시가 된다", () => {
+  let s = null;
+  for (let i = 0; i < 55; i++) {
+    const v = s ? Core.toView(s) : clean(null);
+    v.quickNotes.A = (v.quickNotes.A || []).concat({ text: "m" + i, createdAt: T1 });
+    s = Core.fromView(v, s, { now: T1, newId: ids });
+  }
+  const live = s.quickNotes.A.filter(n => !n.deletedAt);
+  assert.equal(live.length, 50);
+  assert.equal(live[0].text, "m5");
+  assert.equal(s.quickNotes.A.filter(n => n.deletedAt).length, 5);
+});
+
+test("id 없는 새 기록(화면에서 방금 만든 것)을 같은 상태로 거듭 저장해도 복제되지 않고, 지우면 그 하나만 삭제 표시된다", () => {
+  const note = { text: "통관 중", createdAt: T1 };
+  let s = Core.fromView({ quickNotes: { A: [{ ...note }] }, informed: { A: [{ date: "2026-10-19", channel: "메일", status: "지연", due: "2026-09-24", note: "", createdAt: T1 }] } }, null, { now: T1, newId: ids });
+  s = Core.fromView({ quickNotes: { A: [{ ...note }, { text: "둘째", createdAt: T2 }] }, informed: { A: [{ date: "2026-10-19", channel: "메일", status: "지연", due: "2026-09-24", note: "", createdAt: T1 }] } }, s, { now: T2, newId: ids });
+  s = Core.fromView({ quickNotes: { A: [{ ...note }, { text: "둘째", createdAt: T2 }] }, informed: { A: [{ date: "2026-10-19", channel: "메일", status: "지연", due: "2026-09-24", note: "", createdAt: T1 }] } }, s, { now: T3, newId: ids });
+  assert.equal(s.quickNotes.A.length, 2);
+  assert.equal(s.informLog.A.length, 1);
+  assert.ok(s.quickNotes.A.every(n => !n.deletedAt));
+  s = Core.fromView({ quickNotes: { A: [{ ...note }] }, informed: {} }, s, { now: T3, newId: ids });
+  assert.deepEqual(s.quickNotes.A.map(n => [n.text, !!n.deletedAt]), [["통관 중", false], ["둘째", true]]);
 });

@@ -72,7 +72,7 @@ function daysText(o) { return o.daysLeft == null ? "-" : o.daysLeft < 0 ? "D+" +
 S.reasons = {}; S.causeOverride = {}; S.filter = {}; S.view = "list"; S.bulk = null; S.notice = { template: "사과형", alt: "", signature: "" };
 // ---- 저장: 직접 고친 값을 이 컴퓨터에 남긴다 ----
 let P = Persist.empty(), saveTimer = null;
-S.savedNote = ""; S.contacted = {}; S.contactLog = {}; S.informed = {}; S.onlyNeed = false; S.subst = {}; S.schedule = {};
+S.savedNote = ""; S.contacted = {}; S.contactLog = {}; S.informed = {}; S.quickNotes = {}; S.onlyNeed = false; S.subst = {}; S.schedule = {};
 
 function showSaved() {
   const c = Persist.counts(P), total = c.edited + c.causeOverride + c.reasons;
@@ -83,7 +83,7 @@ function showSaved() {
 function snapshot() {
   const idc = S.mapping["주문번호"];
   const nos = idc ? S.rows.map(r => r[idc]) : [];
-  P = Persist.mergeState(P, { edited: S.edited, reasons: S.reasons, causeOverride: S.causeOverride, notice: S.notice, contacted: S.contacted, contactLog: S.contactLog, informed: S.informed, subst: S.subst, schedule: S.schedule, soonRules: S.soonRules }, nos);
+  P = Persist.mergeState(P, { edited: S.edited, reasons: S.reasons, causeOverride: S.causeOverride, notice: S.notice, contacted: S.contacted, contactLog: S.contactLog, informed: S.informed, quickNotes: S.quickNotes, subst: S.subst, schedule: S.schedule, soonRules: S.soonRules }, nos);
   return P;
 }
 function persist() {
@@ -95,7 +95,7 @@ function persist() {
 }
 // 새로 연 목록에 저장된 기록을 다시 적용한다. 새 파일의 납기가 저장된 값과 다르면 덮어쓰지 않고 알린다.
 function applySaved() {
-  S.reasons = { ...P.reasons }; S.causeOverride = { ...P.causeOverride }; S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
+  S.reasons = { ...P.reasons }; S.causeOverride = { ...P.causeOverride }; S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.quickNotes = JSON.parse(JSON.stringify(P.quickNotes)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
   const r = Persist.applySavedDue(S.rows, S.mapping["주문번호"], S.mapping["납기일"], P.edited);
   S.edited = r.applied;
   const n = Object.keys(r.applied).length;
@@ -106,7 +106,7 @@ async function initState() {
   P = Persist.clean(await window.app.loadState());
   const info = await window.app.stateInfo();                      // 저장소가 알려 주는 것: 예전 형식을 바꿨는지, 손상 파일을 치웠는지, 읽기 전용인지
   S.stateNotice = (info && info.notices || []).map(n => n.message).join(" ");
-  S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
+  S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.quickNotes = JSON.parse(JSON.stringify(P.quickNotes)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
   if (P.notice && Notice.TEMPLATES.includes(P.notice.template)) S.notice = { template: P.notice.template, alt: P.notice.alt, signature: P.notice.signature || "" };
   S.soonRules = P.soonRules;
   $("rulesText").value = S.soonRules || "";
@@ -135,6 +135,11 @@ function informedBadge(o) {
   if (st.state === "안내완료") return el("span", { class: "badge ok", title: st.last.channel + "로 " + st.last.date + "에 안내함" }, "안내 " + st.last.date.slice(5));
   if (st.state === "재안내필요") return el("span", { class: "badge soon", title: st.reason }, "다시 안내");
   return el("span", { class: "badge late" }, "미안내");
+}
+// 표의 안내 칸에 붙는 작은 표시: 이 주문에 빠른 메모가 몇 건 있는지. 안내 상태와는 무관하다.
+function memoBadge(o) {
+  const n = QuickNote.count(S.quickNotes, NO(o));
+  return el("span", { class: "badge memo", title: "빠른 메모 " + n + "건" }, "메모 " + n);
 }
 // 주문들을 안내함으로 기록한다. 같은 날 같은 채널로 이미 기록한 주문은 건너뛰고, 새로 쌓은 건수를 돌려준다.
 function recordInformed(list, channel, note) {
@@ -595,7 +600,7 @@ function render() {
     cb.checked = S.picked.has(NO(o));
     cb.addEventListener("click", e => e.stopPropagation());
     cb.addEventListener("change", () => { if (cb.checked) S.picked.add(NO(o)); else S.picked.delete(NO(o)); renderPickBar(); syncAll(); });
-    const tr = el("tr", { class: S.selected === o["주문번호"] ? "sel" : "" }, el("td", { class: "chk" }, cb), el("td", {}, badge(o.status), ...(o.partial ? [" ", partialBadge(o)] : []), ...(substOpen(o["주문번호"]) ? [" ", substBadge(o["주문번호"])] : [])), el("td", { class: "num" }, daysText(o)), el("td", {}, informedBadge(o)));
+    const tr = el("tr", { class: S.selected === o["주문번호"] ? "sel" : "" }, el("td", { class: "chk" }, cb), el("td", {}, badge(o.status), ...(o.partial ? [" ", partialBadge(o)] : []), ...(substOpen(o["주문번호"]) ? [" ", substBadge(o["주문번호"])] : [])), el("td", { class: "num" }, daysText(o)), el("td", {}, informedBadge(o), ...(QuickNote.count(S.quickNotes, NO(o)) ? [" ", memoBadge(o)] : [])));
     cols.forEach(c => tr.append(c === "요청자" ? filterCell("requester", o[c]) : c === "공급사" ? filterCell("supplier", o[c]) : el("td", {}, o[c] || "")));
     tr.addEventListener("click", () => { S.selected = o["주문번호"]; render(); });
     body.append(tr);
@@ -726,6 +731,39 @@ function informedBox(o) {
     el("p", { class: "sub" }, "안내문을 보낸 뒤에 눌러 두세요. 납기가 바뀌거나 지연이 되면 '다시 안내'로 알려 줘요. 이 앱은 메시지를 보내지 않아요."));
 }
 
+// ---- 빠른 메모: 전화·메신저로 받은 지연 소식을 잊기 전에 주문에 남긴다 (FR-12, CUJ-3) ----
+// 입력은 글 하나뿐이다 (채널·분류 같은 필수 항목이 없다). Ctrl+Enter로 바로 남긴다. 메모는 안내 상태·판정에 영향을 주지 않는다.
+function quickNoteBox(o) {
+  const no = NO(o);
+  const ta = el("textarea", { rows: "2", maxlength: "300", placeholder: "예: 전화로 들음. 통관 서류 보완 중이라 10월 말 예상 (Ctrl+Enter로 남기기)", "aria-label": "빠른 메모" });
+  const msg = el("p", { class: "sub " + (S.noteMsg ? "msg-ok" : "") }, S.noteMsg || ""); S.noteMsg = "";   // 한 번만 보여 준다
+  const submit = () => {
+    const r = QuickNote.add(S.quickNotes, no, ta.value, new Date().toISOString());
+    if (!r.ok) { msg.className = "sub msg-err"; msg.textContent = "메모를 적어 주세요."; ta.focus(); return; }
+    S.noteMsg = r.clipped ? "300자까지만 저장했어요." : r.dropped ? "주문당 최근 " + QuickNote.MAX_LIVE + "건까지만 보관해서 가장 오래된 메모 " + r.dropped + "건이 빠졌어요." : "";
+    S.focusNote = true;                                      // 이어서 바로 또 적을 수 있게 입력 칸으로 돌아온다
+    persist(); render();
+  };
+  const save = el("button", { class: "primary" }, "메모 남기기");
+  save.addEventListener("click", submit);
+  ta.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); } });
+  if (S.focusNote) { S.focusNote = false; setTimeout(() => ta.focus(), 0); }
+
+  const notes = QuickNote.list(S.quickNotes, no);            // 최신순
+  const items = notes.map(n => {
+    const del = el("button", { class: "quiet", title: "이 메모를 지워요" }, "삭제");
+    let armed = false;                                       // 실수로 지우지 않게 두 번 눌러야 지워진다
+    del.addEventListener("click", () => {
+      if (!armed) { armed = true; del.textContent = "정말 삭제?"; return; }
+      QuickNote.remove(S.quickNotes, no, n); persist(); render();
+    });
+    return el("li", {}, el("span", { class: "nt" }, QuickNote.stamp(n.createdAt)), el("span", { class: "ntext" }, n.text), del);
+  });
+  return el("div", { class: "causebox notebox", "data-screen-id": "LS-33-A" }, el("h3", {}, "빠른 메모" + (notes.length ? " (" + notes.length + ")" : "")),
+    ta, el("div", { class: "row" }, save), msg,
+    ...(notes.length ? [el("ul", { class: "hist" }, ...items)] : [el("p", { class: "sub" }, "전화·메신저로 받은 소식을 여기에 남겨 두세요. 안내 상태에는 영향이 없어요.")]));
+}
+
 function renderDetail() {
   const box = $("detail");
   const o = listed().find(x => x["주문번호"] === S.selected);
@@ -738,7 +776,7 @@ function renderDetail() {
     S.edited[o["주문번호"]] ? el("p", { class: "edited" }, "이메일 기준으로 납기를 바꿨어요 (원래 값: " + S.edited[o["주문번호"]].from + ")") : el("span", {}),
     el("p", { class: "sub" }, "아래는 파일에 있던 원래 값이에요."), dl,
     ...(S.schedule[NO(o)] ? [schedBlock(o)] : []),
-    o.status === "지연" ? causeBox(o) : el("span", {}), substBox(o), informedBox(o), noticeBox(o));
+    o.status === "지연" ? causeBox(o) : el("span", {}), substBox(o), informedBox(o), quickNoteBox(o), noticeBox(o));
 }
 
 function load(file, isSample) {

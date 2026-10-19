@@ -1,7 +1,7 @@
 // 저장된 기록을 새로 연 목록에 다시 적용하고, 현재 상태를 저장본에 합치는 순수 함수.
 // 저장하는 것: edited(이메일로 바꾼 납기 {from,to}), reasons(사유), causeOverride(직접 지정한 원인), notice(템플릿 선택)
 (function (root) {
-  const empty = () => ({ edited: {}, reasons: {}, causeOverride: {}, notice: null, contacted: {}, contactLog: {}, informed: {}, subst: {}, schedule: {}, soonRules: null });
+  const empty = () => ({ edited: {}, reasons: {}, causeOverride: {}, notice: null, contacted: {}, contactLog: {}, informed: {}, quickNotes: {}, subst: {}, schedule: {}, soonRules: null });
   const CHANNELS = ["메일", "카톡·문자", "전화", "구두", "기타"];
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
   const SUBST_STATES = ["의심", "확인요청중", "승인", "거절"];
@@ -48,6 +48,15 @@
         if (ok.length) s.informed[no] = ok.slice(-50);
       });
     }
+    // 빠른 메모(주문별): [{ text, createdAt?, id? }] (주문당 최근 50건, 한 건 300자). 안내 상태와는 무관하다.
+    if (saved.quickNotes && typeof saved.quickNotes === "object" && !Array.isArray(saved.quickNotes)) {
+      Object.entries(saved.quickNotes).forEach(([no, arr]) => {
+        if (!Array.isArray(arr)) return;
+        const ok = arr.filter(e => e && typeof e.text === "string" && e.text.trim())
+          .map(e => ({ text: e.text.slice(0, 300), ...(typeof e.id === "string" && e.id ? { id: e.id.slice(0, 64) } : {}), ...(typeof e.createdAt === "string" && e.createdAt ? { createdAt: e.createdAt.slice(0, 40) } : {}) }));
+        if (ok.length) s.quickNotes[no] = ok.slice(-50);
+      });
+    }
     if (typeof saved.soonRules === "string") s.soonRules = saved.soonRules.slice(0, 2000);
     if (saved.notice && typeof saved.notice === "object") s.notice = { template: String(saved.notice.template || ""), alt: String(saved.notice.alt || ""), signature: String(saved.notice.signature || "") };
     return s;
@@ -74,7 +83,7 @@
   function mergeState(saved, current, orderNos) {
     const out = clean(saved);
     const here = new Set(orderNos);
-    ["edited", "reasons", "causeOverride", "subst", "schedule", "informed"].forEach(k => {
+    ["edited", "reasons", "causeOverride", "subst", "schedule", "informed", "quickNotes"].forEach(k => {
       Object.keys(out[k]).forEach(no => { if (here.has(no)) delete out[k][no]; });
       Object.entries(current[k] || {}).forEach(([no, v]) => { if (here.has(no)) out[k][no] = v; });
     });
