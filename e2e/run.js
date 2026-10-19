@@ -22,10 +22,12 @@ const scenarios = fs.readdirSync(path.join(__dirname, "scenarios")).filter(f => 
   console.log(`E2E 시작: 시나리오 ${scenarios.length}개 · 실제 데이터 ${REAL_STATE}\n`);
 
   for (const sc of scenarios) {
-    const apps = [], dirs = new Set(), checks = [];
+    const apps = [], dirs = new Set(), checks = [], gaps = [];
     const ctx = {
       check: (name, ok, detail = "") => { checks.push({ name, ok: !!ok, detail }); console.log("  " + (ok ? "PASS " : "FAIL ") + name + (detail ? "  (" + detail + ")" : "")); return !!ok; },
       note: text => console.log("  ·    " + text),
+      // 감사에서 발견한 "문서와 동작이 다른 곳". 실패로 세지 않고 따로 모아 AUDIT.md와 백로그에 올린다. 고치면 check로 바꾼다.
+      gap: (name, detail = "") => { gaps.push({ name, detail }); console.log("  GAP  " + name + (detail ? "  (" + detail + ")" : "")); },
       launch: async opts => { const a = await launchApp(opts); apps.push(a); dirs.add(a.userData); return a; },
     };
     console.log(`[${sc.id}] ${sc.name}`);
@@ -38,7 +40,7 @@ const scenarios = fs.readdirSync(path.join(__dirname, "scenarios")).filter(f => 
     if (failed.length && apps.length) { try { await apps[apps.length - 1].screenshot(path.join(OUT, sc.id + "-FAIL.png")); } catch (e) { /* 이미 종료됨 */ } }
     for (const a of apps) await a.close();
     if (!keep) for (const d of dirs) try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) { /* 잠겨 있으면 .gitignore가 막는다 */ }
-    summary.push({ id: sc.id, name: sc.name, total: checks.length, failed: failed.length });
+    summary.push({ id: sc.id, name: sc.name, total: checks.length, failed: failed.length, gaps: gaps.length });
     console.log("");
   }
 
@@ -46,7 +48,7 @@ const scenarios = fs.readdirSync(path.join(__dirname, "scenarios")).filter(f => 
   const safe = realBefore === realAfter;
   console.log((safe ? "PASS " : "FAIL ") + "실제 사용자 데이터(state.json)가 바뀌지 않았다  (" + (safe ? realBefore : realBefore + " -> " + realAfter) + ")");
   console.log("\n요약");
-  summary.forEach(s => console.log(`  ${s.failed ? "FAIL" : "PASS"} ${s.id} ${s.name}  (${s.total - s.failed}/${s.total})`));
+  summary.forEach(s => console.log(`  ${s.failed ? "FAIL" : "PASS"} ${s.id} ${s.name}  (${s.total - s.failed}/${s.total})${s.gaps ? "  · 발견 사항(GAP) " + s.gaps + "건" : ""}`));
   const bad = summary.filter(s => s.failed).length + (safe ? 0 : 1);
   console.log("\n" + (bad ? bad + "개 실패" : "모두 통과"));
   process.exit(bad ? 1 : 0);
