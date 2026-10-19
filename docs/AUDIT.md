@@ -105,6 +105,20 @@ npm run probe:e2e-safety              # 실제 사용자 데이터를 안 건드
 | `README.md` | "테스트 141개", `00-첫화면.png`의 API 키 버튼. ("확인 필요 주문을 보여 줌" 문구는 G-8로 이제 맞다) | Phase 8 |
 | `IA.md` | LS-25-A(주문 표)와 LS-23-A(한 통 안내문)에 확인 필요 반영 | v0.1.1로 정정 (이번 작업) |
 
+## 10. 보안·개인정보 점검 (Phase 7, 7-D)
+
+`npm test`의 `test/security.test.js`가 매번 확인한다 (코드를 읽어 위험한 패턴이 생기면 실패).
+
+| 점검 | 결과 |
+|---|---|
+| 화면·src 코드의 `innerHTML`/`outerHTML`/`insertAdjacentHTML`/`document.write`/`eval`/`new Function` | 0건 |
+| `contextIsolation: true`, `nodeIntegration: false`, `webSecurity` 끄지 않음, preload 지정 | 확인 |
+| CSP: `default-src 'self'; style-src 'self'; script-src 'self'`, 인라인 스크립트·이벤트 속성·외부 스크립트 없음 | 확인 |
+| preload가 화면에 여는 기능 18개 (목록 고정). 키 값을 돌려주는 기능 없음 | 확인 |
+| 외부 통신 | `main.js`의 `fetch` 한 곳(`api.anthropic.com`), 사용자가 키를 넣었을 때만. 기본 여정(E2E S-07)에서 http 요청 0건 |
+| CSV 내보내기 수식 삽입(`=`·`+`·`-`·`@`로 시작하는 칸) | 막힘 (`'`을 앞에 붙임) |
+| 저장 암호화 | **없음** (한계, 입사 후 회사 정책에 따라) |
+
 ## 9. 용어·접근성·대비 점검 (Phase 6)
 
 `node tools/a11y-audit.js`로 잰다 (샘플, 탭 4개·상세·패널을 모두 연 상태). E2E S-06이 같은 도구로 합격선을 지킨다.

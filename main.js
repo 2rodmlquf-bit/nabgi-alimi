@@ -216,5 +216,15 @@ ipcMain.handle("state-info", async () => { await getStore().load(); return getSt
 ipcMain.handle("state-save", (e, data) => getStore().save(data));
 ipcMain.handle("state-clear", () => getStore().clear());
 
-app.whenReady().then(createWindow);
+// 같은 저장 폴더를 두 앱이 함께 쓰면 마지막 저장이 이겨서 기록이 사라질 수 있다 → 한 개만 뜨게 한다 (G-7).
+// 두 번째로 켜면 새 창을 만들지 않고 이미 떠 있는 창을 앞으로 가져온다. 잠금은 저장 폴더(userData) 기준이라 E2E의 격리 폴더와 충돌하지 않는다.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
+  });
+  app.whenReady().then(createWindow);
+}
 app.on("window-all-closed", () => app.quit());
