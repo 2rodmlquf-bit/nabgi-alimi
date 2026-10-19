@@ -8,6 +8,7 @@
     "start": "electron .",
     "test": "node --test",
     "dist": "electron-builder --win nsis",
+    "test:e2e": "node e2e/run.js",
     "probe:e2e-safety": "node tools/e2e-safety-probe.js"
   },
   "build": {

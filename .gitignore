@@ -8,7 +8,7 @@ dist/
 *.corrupt-*.json
 
 # E2E 결과물 (스크린샷, 임시 데이터)
-test/e2e/out/
+e2e/out/
 .e2e-userdata*/
 
 # 운영체제·편집기
