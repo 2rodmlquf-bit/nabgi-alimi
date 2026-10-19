@@ -27,13 +27,14 @@ module.exports = {
     const notice = (await app.text("#notice")) || "";
     ctx.check("FR-01 읽을 수 없는 납기일 주문이 '확인 필요' 카드와 알림에 나온다", nCheck === "2" && /PO-2026-1037/.test(notice) && /PO-2026-1038/.test(notice), "카드 " + nCheck);
     const inTable = (await app.text("#tbody")) || "";
-    if (!/PO-2026-1037/.test(inTable)) ctx.gap("FR-01 '확인 필요' 주문(PO-2026-1037, 1038)이 예외 목록 표에는 없다", "카드와 알림 줄(번호만, 5건까지)에만 보인다. README는 '숨기지 않고 보여 줌'이라고 쓰고 PRD는 '확인 필요로 남는다'고만 써서 해석이 갈린다");
-    else ctx.check("FR-01 '확인 필요' 주문이 표에도 나온다", true);
+    // G-8(A안): 읽을 수 없는 납기일 주문은 표 맨 아래에 "확인 필요" 행으로 나온다 (예전에는 카드·알림 줄에만 있었다: GAP-1)
+    const last2 = await app.eval("[...document.querySelectorAll('#tbody tr')].slice(-2).map(r => r.children[4].innerText.trim() + '|' + r.children[1].innerText.trim() + '|' + r.children[2].innerText.trim())");
+    ctx.check("FR-01 '확인 필요' 주문(PO-2026-1037, 1038)이 예외 목록 표 맨 아래에 '확인 필요' 행으로 나온다", JSON.stringify(last2) === JSON.stringify(["PO-2026-1037|확인 필요|-", "PO-2026-1038|확인 필요|-"]), last2.join(" / "));
 
     // FR-03: 카드와 표 건수가 일치한다. 부분 입고는 따로 표시된다
-    const nums = await app.eval("['nLate','nSoon'].map(id => Number(document.getElementById(id).textContent))");
+    const nums = await app.eval("['nLate','nSoon','nCheck'].map(id => Number(document.getElementById(id).textContent))");
     const rows = await app.count("#tbody tr");
-    ctx.check("FR-03 요약 카드의 지연+임박 건수가 표의 행 수와 같다", nums[0] + nums[1] === rows, `${nums[0]}+${nums[1]} vs ${rows}행`);
+    ctx.check("FR-03 요약 카드의 지연+임박+확인 필요 건수가 표의 행 수와 같다", nums[0] + nums[1] + nums[2] === rows, `${nums[0]}+${nums[1]}+${nums[2]} vs ${rows}행`);
     ctx.check("FR-03 부분 입고 주문에 '부분입고' 표시가 붙는다", /부분입고 \d+\/\d+/.test(inTable));
 
     // FR-04: 임박 기준 일수를 바꾸면 판정이 바뀐다

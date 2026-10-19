@@ -86,7 +86,7 @@ function compute() {
 }
 
 function partialBadge(o) { return el("span", { class: "badge warn" }, "부분입고 " + o.partial.received + "/" + o.partial.ordered); }
-function badge(status) { return el("span", { class: "badge " + (status === "지연" ? "late" : status === "임박" ? "soon" : "warn") }, status); }
+function badge(status) { return el("span", { class: "badge " + (status === "지연" ? "late" : status === "임박" ? "soon" : "warn") }, status === "확인필요" ? "확인 필요" : status); }
 function daysText(o) { return o.daysLeft == null ? "-" : o.daysLeft < 0 ? "D+" + -o.daysLeft : o.daysLeft === 0 ? "D-day" : "D-" + o.daysLeft; }
 
 // ---- 2차: 지연 원인, 안내문, 지연 분석 ----
@@ -135,6 +135,8 @@ const NO = o => o["주문번호"];
 const reasonOf = o => S.reasons[NO(o)] || o["비고"] || "";
 const causeOf = o => S.causeOverride[NO(o)] || Cause.classifyCause(reasonOf(o));
 const delayedList = () => S.result.exceptions.filter(o => o.status === "지연");
+// 표에 보이는 모든 주문: 지연·임박(급한 순) 다음에 '확인 필요'(맨 아래). 납기일을 읽을 수 없는 주문도 안내 대상이다 (G-8).
+const listed = () => S.result.exceptions.concat(S.result.needCheck);
 const requesterOf = o => (o["요청자"] || "").trim() || "(요청자 없음)";
 // 필터: 원인(지연만), 요청자(사람), 공급사. 요청자·공급사 필터는 지연과 임박을 모두 보여 준다.
 const norm = (v, empty) => (v || "").trim() || empty;
@@ -165,7 +167,7 @@ function channelSelect() {
 }
 
 function visible() {
-  let l = S.result.exceptions;
+  let l = listed();
   if (S.onlyNeed) l = l.filter(o => informedOf(o).state !== "안내완료");
   if (S.filter.cause) l = l.filter(o => o.status === "지연" && causeOf(o) === S.filter.cause);
   if (S.filter.requester) l = l.filter(o => norm(o["요청자"], "(요청자 없음)") === S.filter.requester);
@@ -201,7 +203,7 @@ function sortHead(label) {
   return th;
 }
 // 선택한 주문을 한꺼번에 처리하는 막대: 공급사에 연락함 기록, 사유 일괄 입력, CSV 저장
-function pickedOrders() { return S.result.exceptions.filter(o => S.picked.has(NO(o))); }
+function pickedOrders() { return listed().filter(o => S.picked.has(NO(o))); }
 function renderPickBar() {
   const bar = $("pickBar");
   const list = S.result ? pickedOrders() : [];
@@ -261,7 +263,7 @@ function renderPickBar() {
 
 // 한 연구원의 지연·임박 주문을 한 통으로 묶은 안내문
 function digestItems(name) {
-  return S.result.exceptions.filter(o => requesterOf(o) === name).map(o => {
+  return listed().filter(o => requesterOf(o) === name).map(o => {
     const ed = S.edited[NO(o)];
     return { orderNo: NO(o), item: (o["품목명"] || "").trim(), status: o.status, daysLeft: o.daysLeft, due: o["납기일"], oldDue: ed ? ed.from : "", reason: reasonOf(o), partial: o.partial || null, schedule: S.schedule[NO(o)] || [] };
   });
@@ -276,7 +278,7 @@ function renderDigestBox() {
   const copy = el("button", { class: "primary" }, "복사"); copy.addEventListener("click", () => copyText(ta.value, copy));
   const close = el("button", { class: "quiet" }, "닫기"); close.addEventListener("click", () => { S.digestOpen = false; S.digestMsg = ""; renderDigestBox(); });
   // 보낸 뒤에 누르는 단추: 이 연구원의 지연·임박 주문 전부를 안내함으로 남긴다
-  const orders = S.result.exceptions.filter(o => requesterOf(o) === name);
+  const orders = listed().filter(o => requesterOf(o) === name);
   const ch = channelSelect();
   const rec = el("button", {}, "이 " + orders.length + "건 안내함으로 기록");
   rec.addEventListener("click", () => {
@@ -320,7 +322,7 @@ async function copyText(text, btn) {
 function templateControls(onChange, o) {
   const tpl = el("select", {});
   Notice.TEMPLATES.forEach(t => tpl.append(el("option", { value: t }, t)));
-  tpl.value = o && o.status === "임박" && S.notice.template === "사과형" ? "임박 사전 안내" : S.notice.template; // 아직 늦지 않은 주문은 사과형 대신 사전 안내를 먼저 보여 준다
+  tpl.value = o && o.status === "임박" && S.notice.template === "사과형" ? "임박 사전 안내" : o && o.status === "확인필요" && S.notice.template === "사과형" ? "공지형" : S.notice.template; // 아직 늦지 않은 주문은 사과형 대신 사전 안내를 먼저 보여 준다
   const alt = el("textarea", { rows: "2", placeholder: "대안 내용을 직접 입력하세요 (예: 대체품 문의 가능, 납기 단축 요청 가능)" });
   alt.value = S.notice.alt;
   const altWrap = el("label", {}, "대안 (대안 제시형에만 들어가요)", alt);
@@ -514,7 +516,7 @@ function renderReport() {
   const delay = Analyze.summarize(delayedList(), causeOf);
   const groups = Contact.plan({ exceptions: S.result.exceptions, needCheck: S.result.needCheck, noReply: S.supRes ? S.supRes.noReply : [], causeOf });
   const contacted = groups.filter(g => S.contacted[g.supplier] === base).length;
-  const text = Report.buildReport({ base, fileName: S.name, total: S.rows.length, counts: S.result.counts, delay, groups, contacted, editedCount: Object.keys(S.edited).length, informed: informedSummary(S.result.exceptions) });
+  const text = Report.buildReport({ base, fileName: S.name, total: S.rows.length, counts: S.result.counts, delay, groups, contacted, editedCount: Object.keys(S.edited).length, informed: informedSummary(listed()) });
   const status = el("p", { class: "sub" });
 
   async function save(name, body, ext) {
@@ -594,7 +596,7 @@ function render() {
   if (substN) msgs.push("대체품 확인이 끝나지 않은 주문이 " + substN + "건 있어요 (승인 전에는 받아들이지 마세요).");
   if (r.counts.부분입고) msgs.push("부분 입고 중인 주문이 " + r.counts.부분입고 + "건 있어요. 입고 완료로 빼지 않고 남은 수량 기준으로 판정했어요.");
   if (S.savedNote) msgs.push(S.savedNote);
-  if (r.needCheck.length) msgs.push("납기일을 읽을 수 없는 주문이 " + r.needCheck.length + "건 있어요: " + r.needCheck.slice(0, 5).map(o => o["주문번호"]).join(", ") + (r.needCheck.length > 5 ? " 외" : ""));
+  if (r.needCheck.length) msgs.push("납기일을 읽을 수 없는 주문이 " + r.needCheck.length + "건 있어요: " + r.needCheck.slice(0, 5).map(o => o["주문번호"]).join(", ") + (r.needCheck.length > 5 ? " 외" : "") + ". 표 맨 아래에 '확인 필요'로 보여요.");
   notice.textContent = msgs.join(" "); notice.hidden = !msgs.length;
 
   const cols = TABLE_COLS.filter(c => S.mapping[c]);
@@ -627,9 +629,9 @@ function render() {
   if (hasFilter()) {
     const x = el("button", { class: "quiet" }, "필터 해제");
     x.addEventListener("click", () => { S.filter = {}; S.digestOpen = false; render(); });
-    const nLate = shown.filter(o => o.status === "지연").length, nSoon = shown.length - nLate;
+    const nLate = shown.filter(o => o.status === "지연").length, nSoon = shown.filter(o => o.status === "임박").length, nCheck = shown.filter(o => o.status === "확인필요").length;
     const who = [S.filter.requester && "요청자 " + S.filter.requester, S.filter.supplier && "공급사 " + S.filter.supplier, S.filter.cause && "원인 " + S.filter.cause].filter(Boolean).join(" · ");
-    const parts = [el("span", { class: "chip" }, who + " · 지연 " + nLate + "건" + (S.filter.cause ? "" : ", 임박 " + nSoon + "건")), x];
+    const parts = [el("span", { class: "chip" }, who + " · 지연 " + nLate + "건" + (S.filter.cause ? "" : ", 임박 " + nSoon + "건" + (nCheck ? ", 확인 필요 " + nCheck + "건" : ""))), x];
     if (S.filter.requester && !S.filter.cause && !S.filter.supplier && shown.length) {
       const dg = el("button", { class: "primary" }, S.digestOpen ? "안내문 닫기" : "이 연구원에게 한 통 안내문");
       dg.addEventListener("click", () => { S.digestOpen = !S.digestOpen; render(); });
@@ -714,8 +716,8 @@ function substBox(o) {
 // 연구원 안내 현황 막대: 안내가 안 된 것·다시 알려야 할 것을 한눈에 보고, 그것만 골라 볼 수 있다
 function renderInformBar() {
   const bar = $("informBar");
-  if (S.view !== "list" || !S.result || !S.result.exceptions.length) { bar.hidden = true; return; }
-  const s = informedSummary(S.result.exceptions);
+  if (S.view !== "list" || !S.result || !listed().length) { bar.hidden = true; return; }
+  const s = informedSummary(listed());
   const cb = el("input", { type: "checkbox" }); cb.checked = S.onlyNeed;
   cb.addEventListener("change", () => { S.onlyNeed = cb.checked; render(); });
   const parts = [el("b", {}, "연구원 안내"), el("span", { class: "badge late" }, "미안내 " + s.미안내), el("span", { class: "badge soon" }, "다시 안내 " + s.재안내필요), el("span", { class: "badge ok" }, "완료 " + s.안내완료)];
@@ -744,7 +746,7 @@ function informedBox(o) {
 
 function renderDetail() {
   const box = $("detail");
-  const o = S.result.exceptions.find(x => x["주문번호"] === S.selected);
+  const o = listed().find(x => x["주문번호"] === S.selected);
   if (!o) { box.replaceChildren(el("p", { class: "sub" }, "표에서 주문을 누르면 상세가 여기에 보여요.")); return; }
   const dl = el("dl", {});
   Object.entries(o._raw).forEach(([k, v]) => { dl.append(el("dt", {}, k), el("dd", {}, v || "(비어 있음)")); });

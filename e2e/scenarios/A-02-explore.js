@@ -8,7 +8,7 @@ module.exports = {
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
 
     const col = i => app.eval(`[...document.querySelectorAll('#tbody tr')].map(r => r.children[${i}].innerText.trim())`);
-    const dueTimes = () => app.eval("[...document.querySelectorAll('#tbody tr')].map(r => (Judge.parseDate(r.children[8].innerText.trim()) || { getTime: () => NaN }).getTime())");
+    const dueTimes = () => app.eval("[...document.querySelectorAll('#tbody tr')].map(r => (Judge.parseDate(r.children[8].innerText.trim()) || { getTime: () => Number.MAX_SAFE_INTEGER }).getTime())");   // 읽을 수 없는 납기일은 오름차순에서 맨 뒤 (Infinity는 CDP를 거치며 null이 되어 유한한 큰 수를 쓴다)
     const head = () => app.eval("[...document.querySelectorAll('#thead th')].find(t => t.textContent.startsWith('납기일')).textContent");
     const sorted = (a, dir) => a.every((v, i) => i === 0 || (dir === "asc" ? a[i - 1] <= v : a[i - 1] >= v));
 
@@ -27,10 +27,10 @@ module.exports = {
     // ---------- FR-05 검색 ----------
     await app.setValue("#q", "산업", "input"); await app.sleep(300);
     const found = await app.eval("[...document.querySelectorAll('#tbody tr')].map(r => r.innerText)");
-    ctx.check("FR-05 '산업'으로 검색하면 일치하는 주문만 남는다", found.length > 0 && found.length < 13 && found.every(t => t.includes("산업")), found.length + "건");
+    ctx.check("FR-05 '산업'으로 검색하면 일치하는 주문만 남는다", found.length > 0 && found.length < 15 && found.every(t => t.includes("산업")), found.length + "건");
     ctx.check("FR-05 검색 결과 안내 문구가 나온다", /검색 결과 \d+건/.test((await app.text("#qInfo")) || ""));
     await app.setValue("#q", "", "input"); await app.sleep(250);
-    ctx.check("FR-05 검색어를 지우면 전체 목록으로 돌아온다", (await app.count("#tbody tr")) === 13);
+    ctx.check("FR-05 검색어를 지우면 전체 목록으로 돌아온다", (await app.count("#tbody tr")) === 15);
 
     // ---------- FR-05 필터: 요청자, 공급사, 원인 ----------
     await app.eval("document.querySelector('#tbody tr').children[7].click()"); await app.sleep(300);
@@ -38,7 +38,7 @@ module.exports = {
     const reqs = await col(7);
     ctx.check("FR-05 요청자 칸을 누르면 그 요청자의 주문만 남는다", /^요청자 /.test(chip) && reqs.length > 0 && new Set(reqs).size === 1, chip.split("\n")[0]);
     await app.clickText("#filterChip button", "필터 해제"); await app.sleep(250);
-    ctx.check("FR-05 '필터 해제'를 누르면 전체 목록으로 돌아온다", (await app.count("#tbody tr")) === 13);
+    ctx.check("FR-05 '필터 해제'를 누르면 전체 목록으로 돌아온다", (await app.count("#tbody tr")) === 15);
 
     await app.eval("document.querySelector('#tbody tr').children[6].click()"); await app.sleep(300);
     chip = ((await app.text("#filterChip")) || "").trim();

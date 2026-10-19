@@ -57,7 +57,7 @@
 
     // 연구원 안내 현황(Informed.summary 결과). 안내 기록을 쓰지 않았으면 이 줄을 넣지 않는다.
     if (informed && informed.total) {
-      L.push("- 연구원 안내: 지연·임박 " + informed.total + "건 중 안내 완료 " + informed.안내완료 + "건, 안내 안 함 " + informed.미안내 + "건, 다시 알려야 할 건 " + informed.재안내필요 + "건");
+      L.push("- 연구원 안내: " + (informed.확인필요 ? "지연·임박·확인 필요 " : "지연·임박 ") + informed.total + "건 중 안내 완료 " + informed.안내완료 + "건, 안내 안 함 " + informed.미안내 + "건, 다시 알려야 할 건 " + informed.재안내필요 + "건");
       if (informed.지연) L.push("- 지연 " + informed.지연 + "건 중 지연되기 전에 미리 안내한 건 " + informed.preempt + "건, 지연 중인데 아직 안내하지 못한 건 " + informed.lateNone + "건");
     }
 
@@ -75,7 +75,7 @@
   const EXC_HEAD = ["상태", "남은일수(음수=지연)", "주문번호", "품목명", "공급사", "요청자", "납기일", "지연 원인", "사유", "공급사 연락일", "연구원 안내"];
   // informedOf: 주문 → "미안내" 같은 글자(없으면 빈 칸)
   function exceptionRows(exceptions, needCheck, causeOf, reasonOf, contactedOn, informedOf) {
-    const row = (o, status, days) => [status, days, o["주문번호"], o["품목명"], o["공급사"], o["요청자"], o["납기일"], status === "지연" ? causeOf(o) : "", reasonOf(o), (contactedOn || {})[(o["공급사"] || "").trim()] || "", status === "확인 필요" || !informedOf ? "" : informedOf(o)];
+    const row = (o, status, days) => [status, days, o["주문번호"], o["품목명"], o["공급사"], o["요청자"], o["납기일"], status === "지연" ? causeOf(o) : "", reasonOf(o), (contactedOn || {})[(o["공급사"] || "").trim()] || "", !informedOf ? "" : informedOf(o)];   // 확인 필요 주문도 안내 대상이다 (G-8)
     return exceptions.map(o => row(o, o.status, o.daysLeft)).concat(needCheck.map(o => row(o, "확인 필요", "")));
   }
 

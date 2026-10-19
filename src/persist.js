@@ -41,7 +41,7 @@
     if (saved.informed && typeof saved.informed === "object" && !Array.isArray(saved.informed)) {
       Object.entries(saved.informed).forEach(([no, arr]) => {
         if (!Array.isArray(arr)) return;
-        const ok = arr.filter(e => e && ISO.test(e.date || "") && (e.status === "지연" || e.status === "임박"))
+        const ok = arr.filter(e => e && ISO.test(e.date || "") && (e.status === "지연" || e.status === "임박" || e.status === "확인필요"))
           .map(e => ({ date: e.date, channel: CHANNELS.includes(e.channel) ? e.channel : "기타", status: e.status, due: String(e.due == null ? "" : e.due).slice(0, 40), note: String(e.note || "").slice(0, 200) }));
         if (ok.length) s.informed[no] = ok.slice(-50);
       });

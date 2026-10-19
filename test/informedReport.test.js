@@ -37,12 +37,12 @@ test("FR-15 보고서: 지연이 없으면 '지연 전에 미리 안내' 줄은 
   assert.ok(!/지연되기 전에 미리 안내한 건/.test(t));
 });
 
-test("FR-15 예외 목록 CSV: 마지막 열이 '연구원 안내'이고 '확인 필요' 줄은 비어 있다", () => {
+test("FR-15 예외 목록 CSV: 마지막 열이 '연구원 안내'이고 확인 필요 줄에도 상태가 들어간다 (G-8)", () => {
   assert.equal(Report.EXC_HEAD[Report.EXC_HEAD.length - 1], "연구원 안내");
   const exc = [{ "주문번호": "A", "공급사": "s", status: "지연", daysLeft: -3 }];
-  const chk = [{ "주문번호": "B", "공급사": "s" }];
+  const chk = [{ "주문번호": "B", "공급사": "s", status: "확인필요" }];
   const rows = Report.exceptionRows(exc, chk, () => "기타·미확인", () => "", {}, o => "안내완료(" + o["주문번호"] + ")");
   assert.equal(rows[0][10], "안내완료(A)");
-  assert.equal(rows[1][10], "");                                    // 확인 필요는 안내 대상이 아니다
+  assert.equal(rows[1][10], "안내완료(B)");                          // 확인 필요 주문도 안내 대상이다 (G-8: 예전에는 빈 칸이었다)
   assert.equal(Report.exceptionRows(exc, [], () => "", () => "", {})[0][10], "");   // informedOf를 안 주면 빈 칸 (예전 호출 방식과 호환)
 });

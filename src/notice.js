@@ -37,6 +37,7 @@
     let status;
     if (v.newDue) status = "납기가 변경되었습니다.\n- 기존: " + (oldF || "미확인") + "\n- 변경: " + newF;
     else if (v.daysLate > 0) status = "기존 납기일은 " + oldF + "입니다.\n현재 " + v.daysLate + "일이 지났으나 아직 입고되지 않았습니다.";
+    else if (!od) status = "납기일을 아직 확인하지 못했습니다." + (String(v.oldDue || "").trim() ? " (파일에 적힌 값: " + String(v.oldDue).trim() + ")" : ""); // 납기일을 읽을 수 없는 주문: 날짜를 지어내지 않는다
     else status = "기존 납기일은 " + oldF + "입니다.\n현재 일정 확인이 필요한 상태입니다.";
     const reasonLine = reason ? "사유는 " + reason + "입니다." : "";
     const follow = v.newDue ? "" : "공급사에 일정을 확인 중이며, 확인되는 대로 다시 안내드리겠습니다.";
@@ -75,7 +76,7 @@
   // 한 연구원에게 여러 건을 한 통으로 알린다. items: [{ orderNo, item, status("지연"|"임박"), daysLeft, due, oldDue, reason, partial, schedule }]
   // 없는 값(사유, 새 납기)은 지어내지 않고 그 줄을 뺀다. 지연은 오래된 순, 임박은 가까운 순으로 이미 정렬돼 들어온다고 본다.
   function renderDigest(researcher, items, signature) {
-    const late = items.filter(i => i.status === "지연"), soon = items.filter(i => i.status === "임박");
+    const late = items.filter(i => i.status === "지연"), soon = items.filter(i => i.status === "임박"), unknown = items.filter(i => i.status === "확인필요");
     const lines = ["안녕하세요, " + honorific(researcher) + ".", "", "요청하신 주문 중 납기 확인이 필요한 건을 한 번에 정리해 안내드립니다."];
     const block = (title, list, tail) => {
       if (!list.length) return;
@@ -84,7 +85,9 @@
         const reason = String(i.reason || "").trim().replace(/[.。]+$/, "");
         lines.push((n + 1) + ". " + (i.item ? i.item + " " : "") + "(" + i.orderNo + ")");
         const due = formatDate(i.due);
-        lines.push("   - 납기: " + (i.oldDue ? formatDate(i.oldDue) + " → " + due + " (변경)" : due) + tail(i));
+        const raw = String(i.due || "").trim();
+        if (i.status === "확인필요") lines.push("   - 납기: 아직 확인하지 못했습니다" + (raw ? " (파일에 적힌 값: " + raw + ")" : "") + tail(i));   // 날짜를 지어내지 않는다
+        else lines.push("   - 납기: " + (i.oldDue ? formatDate(i.oldDue) + " → " + due + " (변경)" : due) + tail(i));
         if (i.partial) lines.push("   - 입고: " + i.partial.received + "/" + i.partial.ordered + " (잔량 " + i.partial.remaining + ")");
         (i.schedule || []).forEach((s, k) => lines.push("   - " + (k + 1) + "차 입고 예정: " + formatDate(s.date) + (s.qty ? " · 수량 " + s.qty : "")));
         if (reason) lines.push("   - 사유: " + reason);
@@ -92,6 +95,7 @@
     };
     block("납기 지연", late, i => i.daysLeft < 0 ? " · " + -i.daysLeft + "일 지남" : "");
     block("납기 임박", soon, i => i.daysLeft === 0 ? " · 오늘" : i.daysLeft > 0 ? " · " + i.daysLeft + "일 남음" : "");
+    block("납기 확인 중", unknown, () => "");
     lines.push("", "공급사와 일정을 확인하는 대로 변경 사항을 다시 안내드리겠습니다.", "감사합니다.");
     if (String(signature || "").trim()) lines.push(signature.trim());
     return lines.join("\n");

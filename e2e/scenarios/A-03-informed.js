@@ -14,16 +14,16 @@ module.exports = {
     const entries = () => app.eval("(S.informed[S.selected] || []).length");
 
     // ---------- FR-08 안내 상태와 현황 막대 ----------
-    ctx.check("FR-08 기록이 없으면 '미안내'로 보이고 막대에 건수가 나온다", (await badge()) === "미안내" && /미안내 13/.test(await bar()) && /완료 0/.test(await bar()), await bar());
+    ctx.check("FR-08 기록이 없으면 '미안내'로 보이고 막대에 건수가 나온다", (await badge()) === "미안내" && /미안내 15/.test(await bar()) && /완료 0/.test(await bar()), await bar());
     await app.click("#tbody tr"); await app.sleep(250);
     await app.clickText("#detail button", "안내함으로 기록");
     await app.waitFor(async () => /^안내 /.test(await badge()), 4000);
-    ctx.check("FR-08 기록하면 '안내 MM-DD'(안내 완료)로 바뀌고 막대 건수가 갱신된다", (await badge()) === "안내 10-12" && /미안내 12/.test(await bar()) && /완료 1/.test(await bar()), (await badge()) + " | " + (await bar()));
+    ctx.check("FR-08 기록하면 '안내 MM-DD'(안내 완료)로 바뀌고 막대 건수가 갱신된다", (await badge()) === "안내 10-12" && /미안내 14/.test(await bar()) && /완료 1/.test(await bar()), (await badge()) + " | " + (await bar()));
     ctx.check("FR-08 막대에 지연 건 중 '미리 안내한 건'과 '미안내 건'이 나온다", /지연 7건 중 지연 전에 미리 안내 0건/.test(await bar()) && /지연인데 아직 미안내 6건/.test(await bar()));
     await app.click('#informBar input[type=checkbox]'); await app.sleep(300);
-    ctx.check("FR-08 '안내가 필요한 것만 보기'를 켜면 안내 완료 건이 빠진다", (await app.count("#tbody tr")) === 12);
+    ctx.check("FR-08 '안내가 필요한 것만 보기'를 켜면 안내 완료 건이 빠진다", (await app.count("#tbody tr")) === 14);
     await app.click('#informBar input[type=checkbox]'); await app.sleep(300);
-    ctx.check("FR-08 끄면 전체 목록으로 돌아온다", (await app.count("#tbody tr")) === 13);
+    ctx.check("FR-08 끄면 전체 목록으로 돌아온다", (await app.count("#tbody tr")) === 15);
 
     // ---------- FR-09 다시 안내: 기준일을 8일 뒤로 ----------
     await app.setValue("#today", "2026-10-20"); await app.sleep(500);

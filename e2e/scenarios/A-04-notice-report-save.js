@@ -49,10 +49,10 @@ module.exports = {
     await app.clickText("#detail button", "안내함으로 기록"); await app.sleep(500);
     await app.click("#tabReport"); await app.sleep(400);
     const report = await app.eval("document.querySelector('#reportView textarea').value");
-    ctx.check("FR-15 보고서에 안내 완료·미안내·다시 안내 건수가 나온다", /연구원 안내: 지연·임박 13건 중 안내 완료 1건, 안내 안 함 12건, 다시 알려야 할 건 0건/.test(report));
+    ctx.check("FR-15 보고서에 안내 완료·미안내·다시 안내 건수가 나온다", /연구원 안내: 지연·임박·확인 필요 15건 중 안내 완료 1건, 안내 안 함 14건, 다시 알려야 할 건 0건/.test(report));
     ctx.check("FR-15 보고서에 지연 중 선제 안내 건수와 미안내 건수가 나온다", /지연 7건 중 지연되기 전에 미리 안내한 건 0건, 지연 중인데 아직 안내하지 못한 건 6건/.test(report));
     const csv = await app.eval("({ head: Report.EXC_HEAD[10], first: Report.exceptionRows(S.result.exceptions, S.result.needCheck, causeOf, reasonOf, S.contacted, informedLabel).map(r => r[10]) })");
-    ctx.check("FR-15 예외 목록 CSV에 '연구원 안내' 열이 있고 상태가 들어간다", csv.head === "연구원 안내" && /^안내완료\(2026-10-12\)$/.test(csv.first[0]) && csv.first[1] === "미안내", csv.first.slice(0, 2).join(" / "));
+    ctx.check("FR-15 예외 목록 CSV에 '연구원 안내' 열이 있고 상태가 들어간다", csv.head === "연구원 안내" && /^안내완료\(2026-10-12\)$/.test(csv.first[0]) && csv.first[1] === "미안내" && csv.first.length === 15 && csv.first.slice(-2).every(v => v === "미안내"), csv.first.length + "줄, 앞 2줄: " + csv.first.slice(0, 2).join(" / "));
     ctx.check("FR-15 CSV·보고 문구를 저장하는 버튼이 있다 (저장 창은 사람이 고른다)", (await app.eval("[...document.querySelectorAll('#reportView button')].map(b => b.textContent.trim())")).filter(t => /저장/.test(t)).length === 3);
 
     // ---------- FR-16 저장과 복원 ----------
