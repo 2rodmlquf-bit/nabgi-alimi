@@ -15,8 +15,8 @@ jobs:
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"   # 단위 테스트에는 Electron 실행 파일이 필요 없다
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
