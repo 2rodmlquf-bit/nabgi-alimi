@@ -47,7 +47,7 @@
 |---|---|
 | `NABGI_USER_DATA` | 저장 폴더(`state.json`, API 키 파일)를 이 **절대 경로**로 바꾼다. 상대 경로와 빈 값은 무시한다 |
 | `NABGI_E2E=1` | E2E 모드. **`NABGI_USER_DATA`가 없으면 앱이 시작하지 않는다** (종료 코드 1). 실제 데이터를 지키는 안전장치 |
-| `NABGI_OPEN_FILE` | E2E 모드에서만, "CSV 열기" 대화상자 대신 이 절대 경로의 파일을 연다 |
+| `NABGI_OPEN_FILE` | E2E 모드에서만, "목록 열기(엑셀·CSV)" 대화상자 대신 이 절대 경로의 파일을 연다 |
 
 화면 조작은 앱을 `--remote-debugging-port=<포트>`로 띄우고 Chrome DevTools Protocol로 한다 (`tools/e2e-safety-probe.js` 참고).
 
