@@ -20,6 +20,7 @@ erDiagram
     AUTH_USERS ||--o{ SUBSTITUTE_CHECKS : user_id
     AUTH_USERS ||--o{ SCHEDULE_ENTRIES : user_id
     AUTH_USERS ||--o{ SUPPLIER_CONTACT_LOGS : user_id
+    AUTH_USERS ||--o{ ORDER_REPLIES : user_id
     AUTH_USERS ||--o{ SUPPLIER_CONTACT_MARKS : user_id
     AUTH_USERS ||--|| USER_SETTINGS : user_id
 
@@ -31,6 +32,7 @@ erDiagram
     ORDER_FILE_ROW }o..o| ORDER_META : order_no
     ORDER_FILE_ROW }o..o{ SUBSTITUTE_CHECKS : order_no
     ORDER_FILE_ROW }o..o{ SCHEDULE_ENTRIES : order_no
+    ORDER_FILE_ROW }o..o{ ORDER_REPLIES : order_no
     SUPPLIER_NAME }o..o{ SUPPLIER_CONTACT_LOGS : supplier_name
     SUPPLIER_NAME }o..o| SUPPLIER_CONTACT_MARKS : supplier_name
 
@@ -113,6 +115,20 @@ erDiagram
         timestamptz deleted_at
         text deleted_reason
     }
+    ORDER_REPLIES {
+        uuid id PK
+        uuid user_id FK "default auth.uid()"
+        text order_no "주문번호 (ADR-0004)"
+        text supplier_name "회신한 공급사 (파일에서 읽은 이름. 주문의 공급사와 달라질 수 있어 따로 둔다)"
+        date replied_on "회신을 받은 날"
+        date promised_on "공급사가 알려 준 약속일 (없을 수 있음)"
+        text channel "메일 카톡·문자 전화 구두 기타"
+        text source "manual email (email = 메일에서 제안해 사람이 기록)"
+        text note "200자"
+        timestamptz created_at
+        timestamptz deleted_at
+        text deleted_reason "user cap"
+    }
     SUPPLIER_CONTACT_LOGS {
         uuid id PK
         uuid user_id FK
@@ -144,7 +160,7 @@ erDiagram
 | 종류 | 표 | 규칙 |
 |---|---|---|
 | **계정** (Supabase가 관리) | `AUTH_USERS` | 앱이 만들거나 고치지 않는다. 사용자가 Supabase 화면에서 하나 만든다. 공개 가입은 닫는다 |
-| **쌓는 기록** (append-only) | `INFORM_LOGS`, `QUICK_NOTES`, `SUPPLIER_CONTACT_LOGS`, `SUBSTITUTE_CHECKS`, `SCHEDULE_ENTRIES` | 행은 고치지 않는다. 지울 때는 `deleted_at`·`deleted_reason`만 채운다. `id`는 앱이 만든 UUID라 올리기가 멱등이다 |
+| **쌓는 기록** (append-only) | `INFORM_LOGS`, `QUICK_NOTES`, `SUPPLIER_CONTACT_LOGS`, `SUBSTITUTE_CHECKS`, `SCHEDULE_ENTRIES`, **`ORDER_REPLIES`(계획)** | 행은 고치지 않는다. 지울 때는 `deleted_at`·`deleted_reason`만 채운다. `id`는 앱이 만든 UUID라 올리기가 멱등이다 |
 | **현재 값** (last-write-wins) | `ORDER_META`, `SUPPLIER_CONTACT_MARKS`, `USER_SETTINGS` | 키 하나에 행 하나. `updated_at`이 최신인 쪽이 이긴다 |
 | **이 PC에만** (DB 아님) | `LOCAL_CLOUD_LINK`, `LOCAL_SESSION` | 아래 3절 |
 | **외부 개념** (표 없음) | 주문, 공급사 | 주문번호·공급사 이름 글자로 가리킨다 |
@@ -195,6 +211,24 @@ stateDiagram-v2
 | SY-11-M | 클라우드 저장 설정 | 켜기/끄기, 로그아웃 단추, 연결된 프로젝트·주인 계정 표시 |
 | AU-11-M | 로그인 | 이메일·비밀번호 입력. 실패하면 이유 안내. 가입·비밀번호 재설정 링크 없음 |
 | SY-21-A | 동기화 상태 | 로그인 상태, 마지막 올린 시각, 대기 건수, 오류 |
+
+## 2-2. 신규 표 `ORDER_REPLIES` 계획 (2026-10-20, 기획 단계 · 아직 DB에 만들지 않았다)
+
+기획안: `docs/FEATURE_회신추적_문의대응.md`. 결정: ADR-0007(새 표·저장 형식 v3), ADR-0008(회신 늦음은 계산).
+
+| 항목 | 내용 |
+|---|---|
+| 하는 일 | 공급사가 주문에 대해 알려 준 **회신과 약속일**을 주문 단위로 쌓는다. 홈의 "회신 늦음"과 주문 상세의 "한눈에"가 이 표를 읽는다 |
+| 종류 | 쌓는 기록. 새 행 넣기와 `deleted_at`·`deleted_reason` 두 열 수정만 된다. 지우기·다른 열 수정은 거부(기존 쌓는 기록 표와 같은 열 단위 권한) |
+| 키 | `id uuid` 기본키 |
+| 제약(안) | `order_no`·`supplier_name` 1~100자, `channel`은 5개 채널, `source in ('manual','email')`, `note` 200자 이하, `(deleted_at is null) = (deleted_reason is null)`, `deleted_reason in ('user','cap')` |
+| 인덱스(안) | `(user_id, order_no, created_at)` |
+| RLS | 다른 표와 같다: `user_id = (select auth.uid())`, anon 거부, `user_id default auth.uid()` |
+| 저장하지 않는 것 | "회신 늦음" 같은 판정. 기록과 기준일로 앱이 계산한다(ADR-0008). 그래서 판정 열이 없다 |
+| 로컬 | 저장 형식 **v3**에 `orderReplies: { 주문번호: [기록…] }` 추가. 주문당 살아 있는 기록 20건 상한(가정), 한도에 밀리면 이유 `cap`. v2 → v3은 빈 목록 추가라 멱등 |
+| 올리기·복원 | `src/sync/rows.js`에 표 하나 추가. 장부 비교로 올리고(ADR-0006), 복원은 로컬에 없는 id만 더한다 |
+| `supplier_contact_logs`와의 관계 | 다르다. 그 표는 **공급사 단위**로 "연락함·답변 받음"을 쌓아 "오늘 연락할 곳"을 계산한다. 이 표는 **주문 단위** 약속일이다. 열을 합치지 않는다(ADR-0007) |
+| 열린 질문 | 약속일이 지난 뒤 "아직 안 왔어요"로 넘기는 방법(기획안 7절 1번), 주문번호 중복 가정(ADR-0004)이 이 표에도 걸림 |
 
 ## 3. 이 PC에만 있는 것 (데이터베이스 아님)
 
