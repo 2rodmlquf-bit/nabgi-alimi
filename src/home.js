@@ -40,6 +40,14 @@
     return { show: !!s.hasFile && !(s.records > 0), steps, current: (steps.find(x => !x.done) || {}).n || 0 };
   }
 
-  const api = { TOP, informList, summarize, startSteps };
+  // 연구원 문의 요약(LS-27-A): 연구원으로 필터했을 때 그 사람의 주문을 한 줄로 요약한다 (FR-23, 결정 2026-10-20: 입고 완료는 뺀다).
+  //   orders: 그 연구원의 판정된 주문(status), informCount: 그 중 안내할 것 수, lateCount·quietCount: 회신 늦음(조용하지 않은 것·조용한 것) 수
+  function requesterSummary(orders, extra) {
+    const x = extra || {}, open = (orders || []).filter(o => NEED.includes(o.status));
+    const count = st => open.filter(o => o.status === st).length;
+    return { total: open.length, late: count("지연"), soon: count("임박"), check: count("확인필요"), inform: x.informCount || 0, replyLate: x.lateCount || 0, replyQuiet: x.quietCount || 0 };
+  }
+
+  const api = { TOP, informList, summarize, startSteps, requesterSummary };
   if (typeof module !== "undefined") module.exports = api; else root.Home = api;
 })(typeof window !== "undefined" ? window : globalThis);
