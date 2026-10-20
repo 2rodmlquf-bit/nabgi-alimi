@@ -31,7 +31,7 @@ test("새 폴더: 파일이 없으면 비어 있고, 저장하면 state.json(v1)
   assert.deepEqual((await s.load()).view, clean(null));
   assert.equal(exists(dir, "state.json"), false);                      // 읽기만 해서는 파일을 만들지 않는다
   await s.save({ ...clean(null), reasons: { A: "x" } });
-  assert.equal(JSON.parse(read(dir, "state.json")).schemaVersion, 1);
+  assert.equal(JSON.parse(read(dir, "state.json")).schemaVersion, 2);
   assert.deepEqual(names(dir), ["state.json"]);                        // state.json.tmp가 남지 않았다
   assert.equal(s.describe().kind, "local-file");
   assert.equal(s.describe().path, path.join(dir, "state.json"));
@@ -55,7 +55,7 @@ test("예전(v0) 파일: 백업을 만든 뒤 새 형식으로 바꾸고, 내용
   assert.equal(r.view.informed.A.length, 2);
   r.view.informed.A.forEach(e => { assert.ok(e.id); assert.ok(e.createdAt); });
   assert.equal(read(dir, "state.v0.bak.json"), original);              // 백업은 원본과 똑같다
-  assert.equal(JSON.parse(read(dir, "state.json")).schemaVersion, 1);  // 파일은 이제 v1
+  assert.equal(JSON.parse(read(dir, "state.json")).schemaVersion, 2);  // 파일은 이제 v2
 }));
 
 test("이전을 마친 뒤 다시 열면 알림이 없고 id가 그대로이며 백업은 바뀌지 않는다 (여러 번 열어도 결과가 같다)", withDir(async dir => {
@@ -109,7 +109,7 @@ test("BOM이 붙은 v1 파일도 읽는다", withDir(async dir => {
 }));
 
 test("더 새로운 버전의 파일: 읽기 전용으로 열고, 저장·삭제를 거부하며, 파일은 한 글자도 바뀌지 않는다", withDir(async dir => {
-  const future = JSON.stringify({ schemaVersion: 2, 새로운: "필드" });
+  const future = JSON.stringify({ schemaVersion: 3, 새로운: "필드" });
   fs.writeFileSync(path.join(dir, "state.json"), future, "utf8");
   const s = new LocalFileStore({ dir, ...det() });
   const r = await s.load();

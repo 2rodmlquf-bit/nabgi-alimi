@@ -1,4 +1,4 @@
-# 데이터 모델 v1과 저장소 (Phase 2)
+# 데이터 모델 v2와 저장소 (Phase 2 → v2: 2026-10-20)
 
 작성: 2026-10-19 · 근거: `납기-문제정의/devpian.md` Phase 2, 코드 `src/store/`
 
@@ -13,14 +13,31 @@
  메인 프로세스 ── createStore({ mode: "local", dir }) ──► 저장소 (LocalFileStore)
                                                         │  뷰 <-> 상태(state) 변환: src/store/core.js
                                                         ▼
-                                                   state.json (v1)
+                                                   state.json (v2)
 ```
 
 - 화면은 **저장 방식을 모른다.** 저장소 인터페이스(`load/save/clear/info`)만 안다. 저장 방식을 바꿀 때는 `createStore`의 `mode`만 바꾼다.
 - 저장소가 하는 일: 읽기, 예전 형식 이전과 백업, 손상 파일 보관, 상한 검사, 임시 파일 후 교체, 동작을 차례로 처리.
 - 변환 로직(`core.js`)은 파일·DB와 무관한 순수 함수라서 로컬 파일 저장소와 (나중의) Supabase 저장소가 똑같이 쓴다.
 
-## 2. 저장 파일 `state.json` (v1)
+## 2-0. v2 (현재, 2026-10-20) — v1과 다른 점
+
+Supabase로 올리기(ADR-0001)를 위해 v1의 `legacy` 덩어리를 없애고, 각 기능을 **자기 기록 목록**으로 바꿨다. 화면에 주는 뷰의 모양은 그대로다.
+
+| v1 | v2 | 규칙 |
+|---|---|---|
+| `legacy.contactLog` | `contactLog` (업체별 목록) | 기록마다 `id`·`createdAt`. 지우면 `deletedAt`·`deletedReason`("user"=사용자가 지움, "cap"=한도 넘어 자동 정리) |
+| `legacy.contacted` | `contactMarks` (업체별 `{date, updatedAt}`) | 현재 값 하나. 날짜가 바뀔 때만 `updatedAt` 갱신 |
+| `legacy.subst` | `substChecks` (주문별 목록) | 내용이 바뀌면 새 행을 더하고, 지우면 살아 있는 행에 삭제 표시 |
+| `legacy.schedule` | `scheduleEntries` (주문별 목록) | 행마다 `id`·`createdAt` |
+| (없음) | `cloudLink` | 이 컴퓨터에만 있는 연결 정보. 올리기 대상 아님 |
+| `informLog`·`quickNotes` | 같음 + `deletedReason` | 옛 삭제 표시는 "user"로 읽는다 |
+
+- 이전: v0·v1 파일은 처음 열 때 v2로 바뀌고 `state.v0.bak.json` / `state.v1.bak.json`에 원본이 남는다. 옛 연락 기록 등의 `createdAt`은 기록한 날짜 정오로 채운다.
+- 같은 화면을 거듭 저장해도 삭제 표시가 늘지 않는다. id 없는 화면 항목은 내용으로 짝지어 같은 기록으로 본다. (0.5.0까지는 id 없는 안내 기록이 저장마다 지움·새 기록으로 바뀌던 문제가 있어 함께 고쳤다.)
+- 아래 2~3절은 v1 기준 설명이며, 안내 기록·메모 규칙은 v2에도 그대로 적용된다.
+
+## 2. (v1 기준) 저장 파일 `state.json`
 
 ```json
 {

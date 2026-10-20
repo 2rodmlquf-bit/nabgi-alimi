@@ -1,4 +1,4 @@
-// 저장 모델 v1과 화면용 뷰의 변환 (src/store/core.js). 디스크·DB와 무관한 순수 함수라서 여기서 규칙을 모두 고정한다.
+// 저장 모델(v1 규칙은 안내 기록·빠른 메모에 그대로, 전체 형식은 v2)과 화면용 뷰의 변환 (src/store/core.js). 디스크·DB와 무관한 순수 함수라서 여기서 규칙을 모두 고정한다.
 // 뷰(view) = 화면이 지금까지 쓰던 모양 { edited, reasons, causeOverride, notice, contacted, contactLog, informed, subst, schedule, soonRules }
 // 상태(state) = 저장하는 v1 모양 { schemaVersion, savedAt, informLog, quickNotes, orderMeta, settings, legacy }
 const test = require("node:test");
@@ -9,11 +9,13 @@ const { clean } = require("../src/persist");
 let n = 0;
 const ids = () => "id-" + ++n;                       // 테스트용 id 생성기 (결정적)
 const T1 = "2026-10-19T09:00:00.000Z", T2 = "2026-10-19T10:00:00.000Z", T3 = "2026-10-19T11:00:00.000Z";
+// v2는 연락 기록·분납 일정에도 id·createdAt을 붙이므로, "내용이 그대로"는 이 둘을 뺀 비교다 (의도된 변경)
+const noIds = v => JSON.parse(JSON.stringify(v, (k, x) => (k === "id" || k === "createdAt" ? undefined : x)));
 const ent = (date, extra) => ({ date, channel: "메일", status: "지연", due: "2026-09-24", note: "", ...extra });
 
-test("빈 상태: v1 모양이고, 뷰로 바꾸면 예전 빈 저장본(clean(null))과 같다", () => {
+test("빈 상태: v2 모양이고, 뷰로 바꾸면 예전 빈 저장본(clean(null))과 같다", () => {
   const s = Core.emptyState();
-  assert.equal(s.schemaVersion, 1);
+  assert.equal(s.schemaVersion, 2);
   assert.deepEqual(s.informLog, {}); assert.deepEqual(s.quickNotes, {}); assert.deepEqual(s.orderMeta, {});
   assert.deepEqual(Core.toView(s), clean(null));
 });
@@ -95,11 +97,13 @@ test("설정: 안내문 선택과 품목별 임박 기준은 settings에 들어�
   assert.equal(Core.fromView(v2, s1, { now: T2, newId: ids }).settings.updatedAt, T2);
 });
 
-test("범위 밖 기능(공급사 연락 기록, 대체품, 분납 일정)은 구조를 바꾸지 않고 그대로 보존한다", () => {
+test("공급사 연락 기록·대체품·분납 일정은 v2에서 기록 목록이 되지만 화면에는 같은 내용으로 보인다", () => {
   const view = { ...clean(null), contacted: { 가온산업: "2026-10-12" }, contactLog: { 가온산업: [{ date: "2026-10-12", kind: "attempt", channel: "메일", promised: "", note: "" }] }, subst: { A: { state: "의심", note: "", supItem: "", supSpec: "", supQty: "", source: "직접", date: "2026-10-12" } }, schedule: { A: [{ date: "2026-10-30", qty: "5" }] } };
   const s = Core.fromView(view, null, { now: T1, newId: ids });
-  assert.deepEqual(Object.keys(s.legacy).sort(), ["contactLog", "contacted", "schedule", "subst"]);
-  assert.deepEqual(Core.toView(s), clean(view));
+  // v2: legacy 덩어리가 없어지고 각각 자기 기록 목록이 된다 (내용은 뷰로 바꾸면 그대로)
+  assert.equal(s.legacy, undefined);
+  assert.ok(s.contactMarks && s.contactLog && s.substChecks && s.scheduleEntries);
+  assert.deepEqual(noIds(Core.toView(s)), noIds(clean(view)));
 });
 
 test("왕복: 뷰 → 상태 → 뷰는 id·createdAt을 빼면 같다 (사용자 데이터를 잃지 않는다)", () => {
@@ -119,23 +123,23 @@ test("뷰를 변환해도 입력은 바뀌지 않는다", () => {
   assert.equal(JSON.stringify(view), frozen);
 });
 
-// ---- 마이그레이션 v0 -> v1 ----
+// ---- 마이그레이션 v0 -> v2 (v1 -> v2는 storeV2.test.js) ----
 // 실제 저장 파일(2026-10-19 백업)과 같은 모양: schemaVersion 없음, 안내 기록(informed) 기능 이전 버전이라 informed도 없다
 const V0_REAL = { edited: {}, reasons: {}, causeOverride: {}, notice: { template: "사과형", alt: "", signature: "" },
   contacted: { 가온산업: "2026-10-12", 바다물산: "2026-10-12" },
   contactLog: { 가온산업: [{ date: "2026-10-12", kind: "attempt", channel: "메일", promised: "", note: "" }] },
   subst: {}, schedule: {}, soonRules: "필터=3\n그리스=3" };
 
-test("마이그레이션: 실제 저장 파일 모양(v0)이 v1이 되고, 뷰로 바꾸면 내용이 그대로다", () => {
-  const s = Core.migrateV0toV1(V0_REAL, { now: T1, newId: ids });
-  assert.equal(s.schemaVersion, 1);
-  assert.deepEqual(Core.toView(s), clean(V0_REAL));
+test("마이그레이션: 실제 저장 파일 모양(v0)이 v2가 되고, 뷰로 바꾸면 내용이 그대로다", () => {
+  const s = Core.migrateV0toV2(V0_REAL, { now: T1, newId: ids });
+  assert.equal(s.schemaVersion, 2);
+  assert.deepEqual(noIds(Core.toView(s)), noIds(clean(V0_REAL)));
   assert.deepEqual(s.informLog, {});                                    // 예전 파일에는 안내 기록이 없었다
 });
 
 test("마이그레이션: 안내 기록이 있는 v0는 기록마다 id가 붙고 createdAt은 기록한 날짜가 된다", () => {
   const v0 = { ...V0_REAL, informed: { A: [ent("2026-10-10"), ent("2026-10-12", { channel: "전화" })], B: [ent("2026-10-11")] } };
-  const s = Core.migrateV0toV1(v0, { now: T3, newId: ids });
+  const s = Core.migrateV0toV2(v0, { now: T3, newId: ids });
   assert.equal(s.informLog.A.length, 2);
   assert.deepEqual(s.informLog.A.map(e => e.createdAt), ["2026-10-10T12:00:00.000Z", "2026-10-12T12:00:00.000Z"]);
   assert.equal(new Set([...s.informLog.A, ...s.informLog.B].map(e => e.id)).size, 3);   // id는 모두 다르다
@@ -143,18 +147,19 @@ test("마이그레이션: 안내 기록이 있는 v0는 기록마다 id가 붙�
 });
 
 test("마이그레이션: 깨진 v0(엉뚱한 타입, 모르는 필드)는 버릴 것은 버리고 멈추지 않는다", () => {
-  const s = Core.migrateV0toV1({ informed: "x", reasons: [1, 2], notice: 5, 엉뚱한: 1, contacted: { a: "2026-10-12", b: 3 } }, { now: T1, newId: ids });
+  const s = Core.migrateV0toV2({ informed: "x", reasons: [1, 2], notice: 5, 엉뚱한: 1, contacted: { a: "2026-10-12", b: 3 } }, { now: T1, newId: ids });
   assert.deepEqual(Core.toView(s).contacted, { a: "2026-10-12" });
   assert.deepEqual(s.informLog, {});
-  assert.deepEqual(Core.migrateV0toV1(null, { now: T1, newId: ids }).informLog, {});
+  assert.deepEqual(Core.migrateV0toV2(null, { now: T1, newId: ids }).informLog, {});
 });
 
 // ---- 버전 판별과 v1 검증 ----
-test("버전 판별: 없으면 v0, 1이면 v1, 더 크면 미래 버전, 배열·문자열은 잘못된 파일", () => {
+test("버전 판별: 없으면 v0, 1이면 v1, 2면 v2, 더 크면 미래 버전, 배열·문자열은 잘못된 파일", () => {
   assert.equal(Core.detectVersion({}), 0);
   assert.equal(Core.detectVersion({ reasons: {} }), 0);
   assert.equal(Core.detectVersion({ schemaVersion: 1 }), 1);
-  assert.equal(Core.detectVersion({ schemaVersion: 2 }), "future");
+  assert.equal(Core.detectVersion({ schemaVersion: 2 }), 2);
+  assert.equal(Core.detectVersion({ schemaVersion: 3 }), "future");
   assert.equal(Core.detectVersion({ schemaVersion: 99 }), "future");
   ["x", 3, null, [], undefined].forEach(v => assert.equal(Core.detectVersion(v), "invalid", String(v)));
   assert.equal(Core.detectVersion({ schemaVersion: "1" }), "invalid");

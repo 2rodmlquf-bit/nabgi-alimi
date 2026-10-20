@@ -6,7 +6,12 @@
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
   const SUBST_STATES = ["의심", "확인요청중", "승인", "거절"];
 
-  function clean(saved) {
+  // opts.cap === false 이면 항목 수 상한으로 자르지 않는다. 저장소(store/core.js)가 상한을 직접 적용하면서 "한도로 밀림"을 기록하려고 쓴다.
+  // 기록마다 저장소가 붙인 id와 만든 시각은 화면을 거쳐 다시 저장될 때 같은 기록임을 알려 주므로 버리지 않는다.
+  const idc = e => ({ ...(typeof e.id === "string" && e.id ? { id: e.id.slice(0, 64) } : {}), ...(typeof e.createdAt === "string" && e.createdAt ? { createdAt: e.createdAt.slice(0, 40) } : {}) });
+
+  function clean(saved, opts = {}) {
+    const capped = opts.cap !== false;
     const s = empty();
     if (!saved || typeof saved !== "object") return s;
     ["edited", "reasons", "causeOverride"].forEach(k => { if (saved[k] && typeof saved[k] === "object" && !Array.isArray(saved[k])) s[k] = { ...saved[k] }; });
@@ -24,7 +29,8 @@
     if (saved.schedule && typeof saved.schedule === "object" && !Array.isArray(saved.schedule)) {
       Object.entries(saved.schedule).forEach(([no, arr]) => {
         if (!Array.isArray(arr)) return;
-        const ok = arr.filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.date || "")).map(e => ({ date: e.date, qty: String(e.qty == null ? "" : e.qty).slice(0, 20) })).slice(0, 20);
+        const all = arr.filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.date || "")).map(e => ({ date: e.date, qty: String(e.qty == null ? "" : e.qty).slice(0, 20), ...idc(e) }));
+        const ok = capped ? all.slice(0, 20) : all;
         if (ok.length) s.schedule[no] = ok;
       });
     }
@@ -33,8 +39,8 @@
       Object.entries(saved.contactLog).forEach(([k, arr]) => {
         if (!Array.isArray(arr)) return;
         const ok = arr.filter(e => e && typeof e.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && (e.kind === "attempt" || e.kind === "reply"))
-          .map(e => ({ date: e.date, kind: e.kind, channel: String(e.channel || "기타").slice(0, 10), promised: /^\d{4}-\d{2}-\d{2}$/.test(e.promised || "") ? e.promised : "", note: String(e.note || "").slice(0, 200) }));
-        if (ok.length) s.contactLog[k] = ok.slice(-200);
+          .map(e => ({ date: e.date, kind: e.kind, channel: String(e.channel || "기타").slice(0, 10), promised: /^\d{4}-\d{2}-\d{2}$/.test(e.promised || "") ? e.promised : "", note: String(e.note || "").slice(0, 200), ...idc(e) }));
+        if (ok.length) s.contactLog[k] = capped ? ok.slice(-200) : ok;
       });
     }
     // 연구원 안내 기록(주문별): [{ date, channel, status, due, note }] (주문당 최근 50건까지)
@@ -45,7 +51,7 @@
           .map(e => ({ date: e.date, channel: CHANNELS.includes(e.channel) ? e.channel : "기타", status: e.status, due: String(e.due == null ? "" : e.due).slice(0, 40), note: String(e.note || "").slice(0, 200),
             // 저장소가 붙인 고유 id와 만든 시각은 화면을 거쳐 다시 저장될 때 같은 기록임을 알려 주므로 버리지 않는다
             ...(typeof e.id === "string" && e.id ? { id: e.id.slice(0, 64) } : {}), ...(typeof e.createdAt === "string" && e.createdAt ? { createdAt: e.createdAt.slice(0, 40) } : {}) }));
-        if (ok.length) s.informed[no] = ok.slice(-50);
+        if (ok.length) s.informed[no] = capped ? ok.slice(-50) : ok;
       });
     }
     // 빠른 메모(주문별): [{ text, createdAt?, id? }] (주문당 최근 50건, 한 건 300자). 안내 상태와는 무관하다.
@@ -54,7 +60,7 @@
         if (!Array.isArray(arr)) return;
         const ok = arr.filter(e => e && typeof e.text === "string" && e.text.trim())
           .map(e => ({ text: e.text.slice(0, 300), ...(typeof e.id === "string" && e.id ? { id: e.id.slice(0, 64) } : {}), ...(typeof e.createdAt === "string" && e.createdAt ? { createdAt: e.createdAt.slice(0, 40) } : {}) }));
-        if (ok.length) s.quickNotes[no] = ok.slice(-50);
+        if (ok.length) s.quickNotes[no] = capped ? ok.slice(-50) : ok;
       });
     }
     if (typeof saved.soonRules === "string") s.soonRules = saved.soonRules.slice(0, 2000);
@@ -92,7 +98,7 @@
     if (typeof current.soonRules === "string") out.soonRules = current.soonRules.slice(0, 2000); // 품목별 임박 기준은 주문과 무관하게 현재 값이 전부다
     const days = clean({ reAlertDays: current.reAlertDays }).reAlertDays;                         // 다시 안내 기준도 현재 값이 전부다 (기본값으로 되돌리면 지워진다)
     if (days) out.reAlertDays = days; else delete out.reAlertDays;
-    if (current.contactLog) out.contactLog = clean({ contactLog: current.contactLog }).contactLog; // 공급사 이름 기준이라 현재 값이 전부다
+    if (current.contactLog) out.contactLog = clean({ contactLog: current.contactLog }, { cap: false }).contactLog; // 공급사 이름 기준이라 현재 값이 전부다 (상한은 저장소가 적용한다)
     if (current.contacted) out.contacted = { ...current.contacted }; // 공급사 이름 기준이라 주문 목록과 무관하게 현재 값이 전부다 (해제도 반영)
     return out;
   }

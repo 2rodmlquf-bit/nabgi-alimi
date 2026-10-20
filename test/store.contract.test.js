@@ -13,11 +13,11 @@ const det = () => { let t = 0, n = 0; return { now: () => "2026-10-19T09:" + Str
 
 // factory: { name, make() -> { store, reopen(), cleanup() } }. reopen은 같은 저장 내용으로 새 저장소를 연다 (앱을 껐다 켜는 것).
 const factories = [
-  { name: "MemoryStore", make: () => { const holder = { text: null }; return { store: new MemoryStore({ ...det(), holder }), reopen: () => new MemoryStore({ ...det(), holder }), cleanup() {} }; } },
+  { name: "MemoryStore", make: () => { const holder = { text: null }; return { store: new MemoryStore({ ...det(), holder }), reopen: () => new MemoryStore({ ...det(), holder }), seed: text => { holder.text = text; }, backedUp: () => true, cleanup() {} }; } },
   { name: "LocalFileStore", make: () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nabgi-store-"));
     const s = new LocalFileStore({ dir, ...det() });
-    return { store: s, reopen: () => new LocalFileStore({ dir, ...det() }), cleanup() { fs.rmSync(dir, { recursive: true, force: true }); } };
+    return { store: s, reopen: () => new LocalFileStore({ dir, ...det() }), seed: text => fs.writeFileSync(path.join(dir, "state.json"), text, "utf8"), backedUp: orig => fs.existsSync(path.join(dir, "state.v1.bak.json")) && fs.readFileSync(path.join(dir, "state.v1.bak.json"), "utf8") === orig, cleanup() { fs.rmSync(dir, { recursive: true, force: true }); } };
   } },
 ];
 
@@ -154,5 +154,36 @@ for (const f of factories) {
     const v = (await store.load()).view.quickNotes;
     assert.equal(v.A.length, 50); assert.equal(v.A[0].text, "m10"); assert.equal(v.A[49].text, "m59");
     assert.equal(v.B[0].text.length, 300);
+  });
+
+  // ---- v1 파일(0.5.0이 쓰던 형식)을 v2로 옮기는 계약 (모든 저장소 공통) ----
+  t("v1 파일: 새 형식(v2)으로 바꾸고 알려 주며, 내용을 잃지 않고, 다시 열면 같은 결과다", async ({ store, reopen, seed, backedUp }) => {
+    const v1 = JSON.stringify({ schemaVersion: 1, savedAt: "2026-10-18T09:00:00.000Z",
+      informLog: { A: [{ id: "i1", date: "2026-10-10", channel: "메일", status: "지연", due: "2026-09-24", note: "전화", createdAt: "2026-10-10T01:00:00.000Z" }, { id: "i2", date: "2026-10-11", channel: "전화", status: "지연", due: "", note: "", createdAt: "2026-10-11T01:00:00.000Z", deletedAt: "2026-10-12T00:00:00.000Z" }] },
+      quickNotes: { A: [{ id: "n1", text: "메모", createdAt: "2026-10-10T02:00:00.000Z" }] }, orderMeta: {},
+      settings: { notice: null, soonRules: "필터=3", updatedAt: "2026-10-10T00:00:00.000Z" },
+      legacy: { contacted: { 가온산업: "2026-10-12" }, contactLog: { 가온산업: [{ date: "2026-10-12", kind: "attempt", channel: "메일", promised: "", note: "" }] }, subst: {}, schedule: {} } });
+    seed(v1);
+    const r = await store.load();
+    assert.equal(r.notices.length, 1); assert.equal(r.notices[0].code, "migrated");
+    assert.equal(backedUp(v1), true);                                            // 예전 파일은 그대로 백업됐다
+    assert.deepEqual(r.view.informed.A.map(e => e.id), ["i1"]);                  // 지운 기록은 계속 지워진 채, 남은 기록은 id 그대로
+    assert.equal(r.view.quickNotes.A[0].id, "n1");
+    assert.equal(r.view.soonRules, "필터=3");
+    assert.equal(r.view.contacted.가온산업, "2026-10-12");
+    assert.equal(r.view.contactLog.가온산업.length, 1);
+    const again = await reopen().load();
+    assert.deepEqual(again.notices, []);                                         // 다시 열면 알림 없음
+    assert.deepEqual(again.view, r.view);                                        // 내용(id 포함)이 같다
+  });
+
+  t("같은 화면을 거듭 저장해도 지운 표시가 늘어나지 않는다 (id 없는 안내 기록 포함)", async ({ store, reopen }) => {
+    await store.save({ ...clean(null), informed: { A: [ent("2026-10-10"), ent("2026-10-11")] } });
+    const v = (await store.load()).view;
+    const s2 = reopen(); await s2.load();
+    await s2.save(v); await s2.save(v); await s2.save(v);
+    const r = await reopen().load();
+    assert.equal(r.view.informed.A.length, 2);
+    if (r.state) assert.equal(r.state.informLog.A.filter(e => e.deletedAt).length, 0);
   });
 }

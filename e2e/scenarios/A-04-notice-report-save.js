@@ -58,7 +58,7 @@ module.exports = {
     // ---------- FR-16 저장과 복원 ----------
     const stateFile = path.join(app.userData, "state.json");
     const saved = await app.waitFor(() => (fs.existsSync(stateFile) ? JSON.parse(fs.readFileSync(stateFile, "utf8")) : null), 5000);
-    ctx.check("FR-16 기록이 이 컴퓨터의 저장 폴더에 자동 저장된다 (재시작 후 복원은 S-00이 확인)", !!saved && saved.schemaVersion === 1 && Object.keys(saved.informLog || {}).length === 1);
+    ctx.check("FR-16 기록이 이 컴퓨터의 저장 폴더에 자동 저장된다 (재시작 후 복원은 S-00이 확인)", !!saved && saved.schemaVersion === 2 && Object.keys(saved.informLog || {}).length === 1);
     const r = await app.eval("window.app.saveState({ reasons: { X: 'a'.repeat(2100000) } })");
     ctx.check("FR-16 저장 내용이 2MB를 넘으면 저장을 거부하고 이유를 돌려준다", r && r.ok === false && /너무 큽니다/.test(r.error || ""), JSON.stringify(r));
     const still = JSON.parse(fs.readFileSync(stateFile, "utf8"));
