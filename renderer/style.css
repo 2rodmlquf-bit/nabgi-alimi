@@ -178,8 +178,24 @@ button.nudge { box-shadow: 0 0 0 3px var(--accent); animation: nudgepulse 1.2s e
 .nudgehint { margin-left: 8px; }
 @keyframes nudgepulse { 50% { box-shadow: 0 0 0 7px var(--accent-soft); } }
 @media (prefers-reduced-motion: reduce) { button.nudge { animation: none; } }
-#cloudPanel .block { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
-#cloudPanel .block .block { border-top: 1px dashed var(--line); }
+/* 클라우드 저장 패널: 맨 위 상태 카드(큰 글씨) → 지금 할 일 → 단계별 접이식 */
+.cloudhero { border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--line); background: var(--sky-soft); color: var(--ink); }
+.cloudhero.tone-ok { background: var(--mint-soft); } .cloudhero.tone-warn { background: var(--amber-soft); } .cloudhero.tone-err { background: var(--rose-soft); } .cloudhero.tone-neutral { background: var(--sky-soft); }
+.herotitle { font-size: 22px; font-weight: 700; line-height: 1.35; }
+.nextbox { font-size: 15px; background: var(--surface); border-radius: 10px; padding: 10px 12px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.nextlabel { font-weight: 700; color: var(--accent); white-space: nowrap; }
+.cloudsteps { display: flex; gap: 6px; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.cloudsteps li { padding: 3px 10px; border-radius: 999px; background: var(--surface); color: var(--muted); border: 1px solid var(--line); }
+.cloudsteps li.done { color: var(--mint); border-color: var(--mint); } .cloudsteps li.current { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+#cloudPanel .step { border: 1px solid var(--line); border-radius: 12px; padding: 0 16px 14px; gap: 10px; }
+#cloudPanel .step > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; padding: 12px 0; font-size: 16px; font-weight: 700; }
+#cloudPanel .step > summary::-webkit-details-marker, #cloudPanel .subblock > summary::-webkit-details-marker { display: none; }
+#cloudPanel .step:not([open]) { padding-bottom: 0; background: var(--surface-2); }
+.stepno { display: inline-flex; width: 26px; height: 26px; border-radius: 50%; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-ink); font-size: 14px; }
+.stepbadge { margin-left: auto; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+.stepbadge.done { background: var(--mint-soft); color: var(--mint); } .stepbadge.current { background: var(--accent-soft); color: var(--accent); }
+#cloudPanel .subblock { margin-top: 10px; padding-top: 12px; border-top: 1px dashed var(--line); }
+#cloudPanel .subblock > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; font-weight: 600; }
 #cloudPanel label { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
 #rulePanel .block { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 #reAlertDays { width: 5em; }

@@ -142,50 +142,57 @@
 
 <section id="cloudPanel" class="panel" data-screen-id="SY-11-M" hidden>
   <div class="drawerhead"><h2>클라우드 저장</h2><button id="cloudClose" class="quiet">닫기</button></div>
+
+  <div id="cloudHero" class="cloudhero tone-neutral" role="status" aria-live="polite">
+    <ol id="cloudSteps" class="cloudsteps" aria-label="진행 단계"></ol>
+    <div id="cloudHeroTitle" class="herotitle"></div>
+    <div class="nextbox"><span class="nextlabel">지금 할 일</span> <span id="cloudNext"></span></div>
+  </div>
+
   <p class="sub">기본은 <b>이 컴퓨터에만 저장</b>이에요. 켜면 안내 기록·메모·연락 기록·설정(주문 목록 파일은 제외)을 내 Supabase 프로젝트에도 사본으로 올려요. <b>데이터가 인터넷의 서버로 나가는 기능</b>이니, 연습용에는 가상 데이터만 쓰세요. 켜도 화면은 이 컴퓨터의 기록을 기준으로 움직이고, 인터넷이 끊겨도 기록은 막히지 않아요.</p>
   <div id="cloudState" class="sub" role="status" aria-live="polite"></div>
 
-  <div class="block" id="cloudConfigBlock">
-    <h3>1. 연결할 프로젝트</h3>
+  <details class="block step" id="cloudConfigBlock" open>
+    <summary><span class="stepno">1</span><span class="steptitle">연결할 프로젝트</span><span class="stepbadge" id="cloudBadge1"></span></summary>
     <label>프로젝트 주소 <input type="text" id="cloudUrl" placeholder="https://….supabase.co" autocomplete="off" spellcheck="false" size="38"></label>
     <label>공개(publishable) 키 <input type="text" id="cloudKey" placeholder="sb_publishable_…" autocomplete="off" spellcheck="false" size="38"></label>
     <p class="sub">공개 키만 넣어요. <b>service_role(비밀) 키는 넣지 마세요.</b> 키 값은 화면에 다시 보여 주지 않아요.</p>
     <div class="row"><button id="cloudConfigSave" class="primary">저장</button><span id="cloudConfigMsg" class="sub" role="status"></span></div>
-  </div>
+  </details>
 
-  <div class="block" id="cloudLoginBlock" data-screen-id="AU-11-M" hidden>
-    <h3>2. 로그인</h3>
+  <details class="block step" id="cloudLoginBlock" data-screen-id="AU-11-M" open hidden>
+    <summary><span class="stepno">2</span><span class="steptitle">로그인</span><span class="stepbadge" id="cloudBadge2"></span></summary>
     <label>이메일 <input type="email" id="cloudEmail" autocomplete="username" size="30"></label>
     <label>비밀번호 <input type="password" id="cloudPassword" autocomplete="current-password" size="30"></label>
     <p class="sub">이 컴퓨터의 기록은 <b>처음 로그인한 계정에 묶여요.</b> 가입과 비밀번호 재설정은 이 앱에서 하지 않아요(Supabase 화면에서 계정을 만들어 두세요).</p>
     <div class="row"><button id="cloudLogin" class="primary">로그인</button><span id="cloudLoginMsg" class="sub" role="status"></span></div>
-  </div>
+  </details>
 
-  <div class="block" id="cloudOpsBlock" data-screen-id="SY-31-M" hidden>
-    <h3>3. 올리기와 복원</h3>
+  <details class="block step" id="cloudOpsBlock" data-screen-id="SY-31-M" open hidden>
+    <summary><span class="stepno">3</span><span class="steptitle">올리기와 복원</span><span class="stepbadge" id="cloudBadge3"></span></summary>
     <div class="row">
       <button id="cloudToggle" class="primary">클라우드 저장 켜기</button>
       <button id="cloudUpload">지금 올리기</button>
       <button id="cloudLogout" class="quiet">로그아웃</button>
     </div>
-    <div class="block" id="cloudMigrateBlock">
-      <h3>처음 한 번: 지금 기록을 클라우드로 옮기기</h3>
+    <details class="block subblock" id="cloudMigrateBlock" open>
+      <summary><span class="steptitle">처음 한 번: 지금 기록을 클라우드로 옮기기</span><span class="stepbadge" id="cloudBadgeMig"></span></summary>
       <p class="sub">옮기기 전에 이 컴퓨터의 저장 파일을 백업하고, 올릴 건수를 보여 드려요. 확인하면 올리고, 끝나면 컴퓨터와 서버의 건수가 같은지 비교해요. 두 번 해도 중복은 생기지 않아요.</p>
       <div class="row"><button id="cloudMigrate">옮길 내용 확인</button><button id="cloudMigrateGo" class="primary" hidden>백업하고 옮기기</button><button id="cloudMigrateCancel" class="quiet" hidden>취소</button></div>
-      <div id="cloudMigrateInfo" class="sub" role="status"></div>
-    </div>
-    <div class="block" id="cloudRestoreBlock">
+    </details>
+    <div id="cloudMigrateInfo" class="sub" role="status"></div>
+    <div class="block subblock" id="cloudRestoreBlock">
       <h3>서버에서 복원</h3>
       <p class="sub">서버에 있는 기록 중 <b>이 컴퓨터에 없는 것만</b> 가져와요. 이 컴퓨터에 있는 기록은 바꾸거나 지우지 않아요. 눌렀을 때만 해요.</p>
       <div class="row"><button id="cloudRestore">서버에서 복원</button><button id="cloudVerify" class="quiet">건수 비교</button></div>
       <div id="cloudRestoreInfo" class="sub" role="status"></div>
     </div>
-    <div class="block">
-      <h3>연결 풀기</h3>
+    <details class="block subblock" id="cloudUnlinkBlock">
+      <summary><span class="steptitle">연결 풀기 (잘 안 쓰는 설정)</span></summary>
       <p class="sub">이 컴퓨터와 계정의 묶음을 풀고 올린 기록 장부를 비워요. 서버의 기록은 지우지 않아요. 이 컴퓨터의 기록도 그대로예요.</p>
       <div class="row"><button id="cloudUnlink" class="quiet">연결 풀기</button><span id="cloudUnlinkMsg" class="sub" role="status"></span></div>
-    </div>
-  </div>
+    </details>
+  </details>
 </section>
 
 <section id="mapPanel" class="panel" data-screen-id="MP-11-M" hidden>
