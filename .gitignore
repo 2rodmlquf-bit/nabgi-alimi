@@ -17,3 +17,7 @@ Thumbs.db
 
 # 실제 사용자 데이터의 백업 (저장소에 넣지 않는다)
 .backup/
+
+# Supabase QA: 프로젝트 주소·키·시험 계정은 저장소에 올리지 않는다
+supabase/qa/*.local.*
+supabase/qa/.env*

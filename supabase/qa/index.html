@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>납기 알리미 · DB QA 화면</title>
+<style>
+:root { --bg:#f6f8fb; --card:#fff; --ink:#232a35; --muted:#5a6577; --line:#e1e7ef; --acc:#2a6db0; --ok:#1d7358; --okbg:#ddf4ea; --bad:#b8325a; --badbg:#fde8ee; --soft:#eef4fb; }
+@media (prefers-color-scheme: dark) { :root { --bg:#12161d; --card:#1b212b; --ink:#e8ecf2; --muted:#9aa5b5; --line:#2c3544; --acc:#6bb3ea; --ok:#70d6b0; --okbg:#173a30; --bad:#f391ad; --badbg:#3d2330; --soft:#1e3448; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.65 "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif; }
+main { max-width:980px; margin:0 auto; padding:20px 16px 64px; }
+h1 { font-size:22px; margin:0 0 6px; } h2 { font-size:17px; margin:0 0 8px; } h3 { font-size:15px; margin:0 0 4px; }
+.sub { color:var(--muted); margin:2px 0 0; font-size:13.5px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin:14px 0; }
+button { font:inherit; border:1px solid var(--line); background:var(--soft); color:var(--ink); border-radius:9px; padding:7px 13px; cursor:pointer; }
+button.primary { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:600; }
+button:disabled { opacity:.5; cursor:not-allowed; }
+input, select { font:inherit; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:8px; padding:6px 9px; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0; }
+.status { font-weight:600; } .status.in { color:var(--ok); }
+.tabs button.on { background:var(--acc); color:#fff; border-color:var(--acc); }
+.tw { overflow-x:auto; border:1px solid var(--line); border-radius:10px; margin-top:8px; }
+table { border-collapse:collapse; width:100%; font-size:13px; } th, td { padding:6px 9px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; max-width:260px; overflow:hidden; text-overflow:ellipsis; }
+th { background:var(--soft); } tr.gone td { color:var(--muted); text-decoration:line-through; }
+.card { border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:10px 0; }
+.card .exp { font-size:13.5px; color:var(--muted); }
+.res { margin-top:8px; padding:8px 11px; border-radius:9px; font-size:13.5px; white-space:pre-wrap; }
+.res.ok { background:var(--okbg); color:var(--ok); } .res.bad { background:var(--badbg); color:var(--bad); }
+.pill { display:inline-block; padding:1px 9px; border-radius:99px; background:var(--soft); font-size:12px; margin-right:6px; }
+details pre { background:var(--soft); border-radius:8px; padding:10px; overflow:auto; font-size:12px; max-height:260px; }
+label.chk { font-size:13.5px; display:inline-flex; gap:6px; align-items:center; color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>납기 알리미 · DB QA 화면</h1>
+  <p class="sub">Supabase 연습용 데이터베이스가 제대로 작동하는지 직접 눌러 보는 화면이에요. <b>시험 계정(A, B)과 가상 데이터만</b> 쓰세요. 이 화면은 내 컴퓨터에서만 열리고, 비밀번호는 어디에도 보내거나 저장하지 않아요(로그인할 때 Supabase로만 보내요).</p>
+  <p id="cfgwarn" class="res bad" hidden>설정 파일(qa-config.local.js)을 못 찾았어요. supabase/qa/README.md의 준비 순서를 보세요.</p>
+
+  <section>
+    <h2>① 로그인</h2>
+    <p class="sub">"A로 로그인"과 "B로 로그인"은 시험 계정으로 바로 들어가요(비밀번호를 칠 필요 없음). 다른 계정으로 해 보려면 아래에 직접 입력하세요.</p>
+    <div class="row">
+      <button class="primary" id="loginA">QA 계정 A로 로그인</button>
+      <button class="primary" id="loginB">QA 계정 B로 로그인</button>
+      <button id="logout">로그아웃</button>
+      <span class="status" id="who">로그아웃 상태</span>
+    </div>
+    <details><summary class="sub">직접 입력해서 로그인</summary>
+      <div class="row"><input id="em" type="email" placeholder="이메일" autocomplete="username"><input id="pw" type="password" placeholder="비밀번호" autocomplete="current-password"><button id="loginX">로그인</button></div>
+    </details>
+    <div id="loginmsg" class="sub"></div>
+  </section>
+
+  <section>
+    <h2>② 내 데이터 보기</h2>
+    <p class="sub">로그인한 계정이 볼 수 있는 행만 나와요. 계정 A와 B로 번갈아 로그인해서 <b>서로의 데이터가 안 보이는지</b> 확인해 보세요. 줄이 그어진 행은 "삭제 표시"가 된 기록이에요.</p>
+    <div class="row tabs" id="tabs"></div>
+    <label class="chk"><input type="checkbox" id="showdel"> 삭제 표시된 행도 보기 (기본은 숨김)</label>
+    <div id="viewinfo" class="sub"></div>
+    <div id="view"></div>
+  </section>
+
+  <section>
+    <h2>③ 직접 해 보기 (시나리오)</h2>
+    <p class="sub">[실행]을 누르면 결과가 "기대대로"인지 자동으로 판정해요. 눈으로 확인했으면 "내가 확인함"에 체크하세요(이 브라우저에 기억돼요). 일부러 <b>거부돼야 하는</b> 시도도 있어요. 거부되면 성공이에요.</p>
+    <div id="cards"></div>
+  </section>
+
+  <section>
+    <h2>④ 요청 기록 (고급)</h2>
+    <p class="sub">이 화면이 Supabase에 보낸 요청과 응답이에요(최근 30건). 비밀번호와 로그인 증표는 보여 주지 않아요.</p>
+    <details><summary class="sub">펼치기</summary><pre id="reqlog">아직 없어요</pre></details>
+  </section>
+</main>
+
+<script src="qa-config.local.js" onerror="document.getElementById('cfgwarn').hidden=false"></script>
+<script src="qa-users.local.js" onerror="void 0"></script>
+<script>
+"use strict";
+const C = window.QA_CONFIG || null, USERS = window.QA_USERS || null;
+const $ = id => document.getElementById(id);
+const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); Object.entries(attrs).forEach(([k, v]) => (k === "class" ? (e.className = v) : e.setAttribute(k, v))); kids.forEach(k => e.append(k)); return e; };
+const uuid = () => crypto.randomUUID();
+const TABLES = ["inform_logs", "quick_notes", "order_meta", "substitute_checks", "schedule_entries", "supplier_contact_logs", "supplier_contact_marks", "user_settings"];
+const TITLE = { inform_logs: "안내 기록", quick_notes: "빠른 메모", order_meta: "주문 메타", substitute_checks: "대체품 확인", schedule_entries: "분납 일정", supplier_contact_logs: "공급사 연락 기록", supplier_contact_marks: "연락함 표시", user_settings: "설정" };
+let session = null, current = "inform_logs", lastLogId = null;
+const reqlog = [];
+
+async function api(path, { method = "GET", auth = true, body, prefer } = {}) {
+  const headers = { apikey: C.key, "Content-Type": "application/json" };
+  if (auth && session) headers.Authorization = "Bearer " + session.token;
+  if (prefer) headers.Prefer = prefer;
+  const t0 = performance.now();
+  let res, text = "", json = null;
+  try { res = await fetch(C.url + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }); text = await res.text(); try { json = text ? JSON.parse(text) : null; } catch (e) { /* JSON 아님 */ } }
+  catch (e) { return { status: 0, json: null, text: String(e), ms: 0 }; }
+  const r = { status: res.status, json, text, ms: Math.round(performance.now() - t0) };
+  reqlog.unshift((auth && session ? "[" + session.label + "] " : "[로그인 안 함] ") + method + " " + path.split("?")[0] + (path.includes("?") ? "?…" : "") + " → " + r.status + (json && json.code ? " " + json.code : "") + " (" + r.ms + "ms)");
+  reqlog.length = Math.min(reqlog.length, 30); $("reqlog").textContent = reqlog.join("\n");
+  return r;
+}
+const code = r => (r.json && r.json.code) || "";
+const denied = r => (r.status === 401 || r.status === 403) && code(r) === "42501";
+const bad = r => r.status === 400 && code(r) === "23514";
+
+async function login(email, password, label) {
+  $("loginmsg").textContent = "로그인 중…";
+  const res = await fetch(C.url + "/auth/v1/token?grant_type=password", { method: "POST", headers: { apikey: C.key, "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { $("loginmsg").textContent = "로그인 실패: " + (j.msg || j.error_description || res.status); return; }
+  session = { token: j.access_token, userId: j.user.id, email, label: label || email };
+  $("loginmsg").textContent = ""; $("who").textContent = session.label + " 로 로그인됨 (user_id " + session.userId.slice(0, 8) + "…)"; $("who").className = "status in";
+  reqlog.unshift("[로그인] " + email + " → 성공"); $("reqlog").textContent = reqlog.join("\n");
+  refreshView();
+}
+function logout() { session = null; $("who").textContent = "로그아웃 상태"; $("who").className = "status"; refreshView(); }
+
+function tabs() {
+  const box = $("tabs"); box.replaceChildren();
+  TABLES.forEach(t => { const b = el("button", { class: t === current ? "on" : "" }, TITLE[t]); b.addEventListener("click", () => { current = t; tabs(); refreshView(); }); box.append(b); });
+}
+async function refreshView() {
+  const box = $("view"); box.replaceChildren();
+  if (!session) { $("viewinfo").textContent = "로그아웃 상태예요. 로그인하지 않으면 데이터를 읽을 수 없어야 해요 (아래에서 확인)."; const r = await api("/rest/v1/" + current + "?select=*&limit=5", { auth: false }); box.append(el("div", { class: "res " + (denied(r) ? "ok" : "bad") }, "로그인 없이 " + TITLE[current] + " 읽기 시도 → " + r.status + " " + code(r) + (denied(r) ? "  ✔ 거부됨 (기대대로)" : "  ✘ 거부되지 않음!"))); return; }
+  const hideDeleted = !$("showdel").checked && ["inform_logs", "quick_notes", "substitute_checks", "schedule_entries", "supplier_contact_logs"].includes(current);
+  const r = await api("/rest/v1/" + current + "?select=*" + (hideDeleted ? "&deleted_at=is.null" : "") + "&order=" + (current === "user_settings" ? "updated_at" : current === "order_meta" || current === "supplier_contact_marks" ? "updated_at.desc" : "created_at.desc") + "&limit=200");
+  if (r.status !== 200) { $("viewinfo").textContent = "읽기 실패 " + r.status + " " + r.text.slice(0, 120); return; }
+  const rows = r.json, live = rows.filter(x => !x.deleted_at).length;
+  $("viewinfo").textContent = session.label + " 가 볼 수 있는 " + TITLE[current] + ": " + rows.length + "행" + ("deleted_at" in (rows[0] || {}) ? " (삭제 표시 없는 것 " + live + "행)" : "") + (rows.length >= 200 ? " — 최근 200행만 표시" : "");
+  if (!rows.length) { box.append(el("p", { class: "sub" }, hideDeleted ? "삭제 표시 없는 행이 없어요 (위의 '삭제 표시된 행도 보기'를 켜 보세요)." : "행이 없어요.")); return; }
+  const cols = Object.keys(rows[0]).filter(k => k !== "user_id");
+  const tb = el("table"), head = el("tr"); cols.forEach(c => head.append(el("th", {}, c))); tb.append(el("thead", {}, head));
+  const body = el("tbody"); rows.forEach(row => { const tr = el("tr", row.deleted_at ? { class: "gone" } : {}); cols.forEach(c => { const v = row[c]; tr.append(el("td", { title: typeof v === "object" && v ? JSON.stringify(v) : String(v ?? "") }, v === null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v))); }); body.append(tr); });
+  tb.append(body); box.append(el("div", { class: "tw" }, tb));
+}
+
+// ---------- 시나리오 ----------
+const other = () => (USERS && session ? (session.userId === USERS.a.userId ? USERS.b.userId : USERS.a.userId) : uuid());
+const need = () => (session ? null : "먼저 위에서 로그인하세요.");
+const run = Date.now().toString(36);
+const logRow = (o = {}) => ({ id: uuid(), order_no: "QA-PAGE-" + run, logged_on: "2026-10-12", channel: "메일", status: "지연", due: "2026-09-24", note: "QA 화면에서 만든 기록", created_at: new Date().toISOString(), ...o });
+const F = { order: () => $("f-order").value.trim() || "QA-PAGE-" + run, channel: () => $("f-channel").value, status: () => $("f-status").value, note: () => $("f-note").value };
+
+const SCEN = [
+  { id: "S01", title: "로그인 없이 읽어 보기", exp: "거부돼야 해요 (로그인하지 않은 요청은 아무 표도 못 봐요).", run: async () => { const r = await api("/rest/v1/inform_logs?select=id&limit=1", { auth: false }); return { ok: denied(r), msg: r.status + " " + code(r) }; } },
+  { id: "S02", title: "안내 기록 남기기", exp: "성공해야 해요. 내가 user_id를 보내지 않았는데 내 이름으로 저장돼요.",
+    form: () => el("div", { class: "row" }, el("input", { id: "f-order", placeholder: "주문번호 (비우면 자동)" }), el("select", { id: "f-channel" }, ...["메일", "카톡·문자", "전화", "구두", "기타"].map(x => el("option", {}, x))), el("select", { id: "f-status" }, ...["지연", "임박", "확인필요"].map(x => el("option", {}, x))), el("input", { id: "f-note", placeholder: "메모 (200자까지)", value: "QA 화면에서 만든 기록" })),
+    run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const row = logRow({ order_no: F.order(), channel: F.channel(), status: F.status(), note: F.note() }); const r = await api("/rest/v1/inform_logs", { method: "POST", body: row, prefer: "return=representation" }); if (r.status === 201) lastLogId = row.id; return { ok: r.status === 201 && r.json[0].user_id === session.userId, msg: r.status + (r.status === 201 ? "  user_id 자동: " + (r.json[0].user_id === session.userId ? "내 계정과 같음" : "다름!") : " " + r.text.slice(0, 120)) }; } },
+  { id: "S03", title: "같은 기록을 두 번 올리기 (중복 방지)", exp: "행이 1개뿐이어야 해요. (앱이 올리기를 다시 해도 중복되지 않게 하는 규칙)", run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const row = logRow({ note: "두 번 올리기 시험" }); await api("/rest/v1/inform_logs", { method: "POST", body: row, prefer: "resolution=ignore-duplicates,return=minimal" }); await api("/rest/v1/inform_logs", { method: "POST", body: row, prefer: "resolution=ignore-duplicates,return=minimal" }); const r = await api("/rest/v1/inform_logs?select=id&id=eq." + row.id); lastLogId = row.id; return { ok: r.json && r.json.length === 1, msg: "같은 id로 2번 올린 뒤 행 " + (r.json ? r.json.length : "?") + "개" }; } },
+  { id: "S04", title: "방금 만든 기록 취소 (삭제 표시)", exp: "성공해야 해요. 지워지는 게 아니라 삭제 표시(이유 user)만 붙고, ②에서 줄이 그어져 보여요.", run: async () => { const e = need(); if (e) return { ok: false, msg: e }; if (!lastLogId) return { ok: false, msg: "먼저 S02나 S03으로 기록을 하나 만드세요." }; const r = await api("/rest/v1/inform_logs?id=eq." + lastLogId, { method: "PATCH", body: { deleted_at: new Date().toISOString(), deleted_reason: "user" }, prefer: "return=representation" }); return { ok: r.status === 200 && r.json.length === 1 && r.json[0].deleted_reason === "user", msg: r.status + " 삭제 이유: " + (r.json && r.json[0] ? r.json[0].deleted_reason : "(없음)") }; } },
+  { id: "S05", title: "[거부돼야 함] 기록의 메모를 고쳐 보기", exp: "거부돼야 해요. 안내 기록은 고치지 않고 쌓기만 해요.", run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const row = logRow({ note: "고치기 시험용" }); await api("/rest/v1/inform_logs", { method: "POST", body: row, prefer: "return=minimal" }); const r = await api("/rest/v1/inform_logs?id=eq." + row.id, { method: "PATCH", body: { note: "고쳐 봄" } }); return { ok: denied(r), msg: r.status + " " + code(r) }; } },
+  { id: "S06", title: "[거부돼야 함] 기록을 지워 보기", exp: "거부돼야 해요. 행은 그대로 남아요.", run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const row = logRow({ note: "지우기 시험용" }); await api("/rest/v1/inform_logs", { method: "POST", body: row, prefer: "return=minimal" }); const r = await api("/rest/v1/inform_logs?id=eq." + row.id, { method: "DELETE" }); const still = await api("/rest/v1/inform_logs?select=id&id=eq." + row.id); return { ok: denied(r) && still.json.length === 1, msg: r.status + " " + code(r) + ", 행은 " + (still.json.length ? "남아 있음" : "사라짐!") }; } },
+  { id: "S07", title: "[거부돼야 함] 메모를 201자로 써 보기", exp: "거부돼야 해요 (안내 메모는 200자까지).", run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const r = await api("/rest/v1/inform_logs", { method: "POST", body: logRow({ note: "가".repeat(201) }) }); return { ok: bad(r), msg: r.status + " " + code(r) }; } },
+  { id: "S08", title: "[거부돼야 함] 모르는 채널로 기록하기", exp: "거부돼야 해요 (채널은 메일·카톡·문자·전화·구두·기타만).", run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const r = await api("/rest/v1/inform_logs", { method: "POST", body: logRow({ channel: "텔레파시" }) }); return { ok: bad(r), msg: r.status + " " + code(r) }; } },
+  { id: "S09", title: "[거부돼야 함] 남의 이름으로 기록 넣기", exp: "거부돼야 해요. 다른 사람(user_id)으로 저장할 수 없어요.", run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const r = await api("/rest/v1/inform_logs", { method: "POST", body: logRow({ user_id: other() }) }); return { ok: denied(r), msg: r.status + " " + code(r) }; } },
+  { id: "S10", title: "빠른 메모: 300자는 되고 301자는 안 됨", exp: "300자는 저장되고, 301자는 거부돼야 해요.", run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const a = await api("/rest/v1/quick_notes", { method: "POST", body: { id: uuid(), order_no: "QA-PAGE-" + run, body: "가".repeat(300) }, prefer: "return=minimal" }); const b = await api("/rest/v1/quick_notes", { method: "POST", body: { id: uuid(), order_no: "QA-PAGE-" + run, body: "가".repeat(301) } }); return { ok: a.status === 201 && bad(b), msg: "300자 → " + a.status + ", 301자 → " + b.status + " " + code(b) }; } },
+  { id: "S11", title: "주문 메타: 최신 시각이 이김", exp: "'새 값'을 저장한 뒤 더 오래된 시각으로 '옛 값'을 덮어쓰려 하면 무시돼서 '새 값'이 남아야 해요.", run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const up = (reason, t) => api("/rest/v1/order_meta?on_conflict=user_id,order_no", { method: "POST", body: { order_no: "QA-PAGE-META", reason, updated_at: new Date(Date.now() + t).toISOString() }, prefer: "resolution=merge-duplicates,return=minimal" }); await up("새 값", 0); await up("옛 값", -3600000); const r = await api("/rest/v1/order_meta?select=reason&order_no=eq.QA-PAGE-META"); return { ok: r.json && r.json[0] && r.json[0].reason === "새 값", msg: "저장된 값: " + (r.json && r.json[0] ? r.json[0].reason : "(없음)") }; } },
+  { id: "S12", title: "설정 저장하고 다시 읽기", exp: "넣은 숫자가 그대로 읽혀야 해요. (아래 숫자를 바꿔 보세요. ③을 실행하면 시험 계정의 설정이 바뀌어요. 원래대로는 node supabase/qa/seed.js)",
+    form: () => el("div", { class: "row" }, el("span", {}, "다시 안내 기준(일)"), el("input", { id: "f-days", type: "number", min: "1", max: "30", value: "7", style: "width:80px" })),
+    run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const n = parseInt($("f-days").value, 10) || 7; const w = await api("/rest/v1/user_settings?on_conflict=user_id", { method: "POST", body: { data: { reAlertDays: n }, updated_at: new Date().toISOString() }, prefer: "resolution=merge-duplicates,return=minimal" }); const r = await api("/rest/v1/user_settings?select=data"); return { ok: w.status < 300 && r.json && r.json[0] && r.json[0].data.reAlertDays === n, msg: "저장 " + w.status + ", 읽은 값 " + (r.json && r.json[0] ? r.json[0].data.reAlertDays : "?") }; } },
+  { id: "S13", title: "내 시험 기록 개수 세어 보기 (서로 안 보이는지)", exp: "A로 로그인하면 6개, B로 로그인하면 3개가 나와야 해요 (README 표 참고). 둘이 섞이면 안 돼요.", run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const r = await api("/rest/v1/inform_logs?select=id,order_no&deleted_at=is.null&order_no=like.QA-PO-*"); const n = r.json ? r.json.length : -1; const isA = USERS && session.userId === USERS.a.userId, isB = USERS && session.userId === USERS.b.userId; const want = isA ? 6 : isB ? 3 : null; const foreign = (r.json || []).some(x => (isA && x.order_no.startsWith("QA-PO-9")) || (isB && !x.order_no.startsWith("QA-PO-9"))); return { ok: want === null ? true : n === want && !foreign, msg: n + "개 (기대 " + (want ?? "해당 없음") + ")" + (foreign ? " — 남의 데이터가 보임!" : "") }; } },
+  { id: "S14", title: "100건 한꺼번에 올리기", exp: "100건이 올라가고 모두 읽혀야 해요. 걸린 시간도 보여 줘요(몇 백 ms).", run: async () => { const e = need(); if (e) return { ok: false, msg: e }; const tag = "QA-PAGE-BULK-" + run; const rows = Array.from({ length: 100 }, (_, i) => logRow({ order_no: tag, note: "대량 " + i })); const a = await api("/rest/v1/inform_logs", { method: "POST", body: rows, prefer: "return=minimal" }); const b = await api("/rest/v1/inform_logs?select=id&order_no=eq." + tag); await api("/rest/v1/inform_logs?order_no=eq." + tag, { method: "PATCH", body: { deleted_at: new Date().toISOString(), deleted_reason: "user" } }); return { ok: a.status === 201 && b.json && b.json.length === 100, msg: "올리기 " + a.status + " (" + a.ms + "ms), 읽기 " + (b.json ? b.json.length : "?") + "건 (" + b.ms + "ms). 시험 행은 삭제 표시를 붙였어요" }; } },
+];
+
+function cards() {
+  const box = $("cards");
+  let saved = {}; try { saved = JSON.parse(localStorage.getItem("nabgi-qa-checked") || "{}"); } catch (e) { /* 저장 못 해도 동작 */ }
+  SCEN.forEach(s => {
+    const res = el("div", { class: "res", hidden: "" });
+    const run = el("button", { class: "primary" }, "실행");
+    run.addEventListener("click", async () => { run.disabled = true; res.hidden = false; res.className = "res"; res.textContent = "실행 중…"; let out; try { out = await s.run(); } catch (e) { out = { ok: false, msg: "오류: " + e.message }; } res.className = "res " + (out.ok ? "ok" : "bad"); res.textContent = (out.ok ? "✔ 기대대로 — " : "✘ 기대와 달라요 — ") + out.msg; run.disabled = false; if (session) refreshView(); });
+    const chk = el("input", { type: "checkbox" }); chk.checked = !!saved[s.id];
+    chk.addEventListener("change", () => { saved[s.id] = chk.checked; try { localStorage.setItem("nabgi-qa-checked", JSON.stringify(saved)); } catch (e) { /* 무시 */ } });
+    box.append(el("div", { class: "card" }, el("h3", {}, el("span", { class: "pill" }, s.id), s.title), el("div", { class: "exp" }, "기대: " + s.exp), ...(s.form ? [s.form()] : []), el("div", { class: "row" }, run, el("label", { class: "chk" }, chk, "내가 확인함")), res));
+  });
+}
+
+if (!C) { $("cfgwarn").hidden = false; } else {
+  tabs(); cards(); refreshView(); $("showdel").addEventListener("change", refreshView);
+  $("loginA").addEventListener("click", () => USERS ? login(USERS.a.email, USERS.a.password, "QA 계정 A") : ($("loginmsg").textContent = "qa-users.local.js가 없어요. 아래에 직접 입력하세요."));
+  $("loginB").addEventListener("click", () => USERS ? login(USERS.b.email, USERS.b.password, "QA 계정 B") : ($("loginmsg").textContent = "qa-users.local.js가 없어요. 아래에 직접 입력하세요."));
+  $("loginX").addEventListener("click", () => login($("em").value.trim(), $("pw").value, $("em").value.trim()));
+  $("logout").addEventListener("click", logout);
+}
+</script>
+</body>
+</html>
