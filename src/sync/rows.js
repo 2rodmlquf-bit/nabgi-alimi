@@ -8,11 +8,11 @@
 // 그래서 앱이 꺼져도, 올리다 실패해도 어긋나지 않고, 같은 일을 다시 해도 결과가 같다(멱등).
 const Core = require("../store/core");
 
-const APPEND = ["inform_logs", "quick_notes", "substitute_checks", "schedule_entries", "supplier_contact_logs"];   // 쌓는 기록: 넣기 + 삭제 표시만
+const APPEND = ["inform_logs", "quick_notes", "substitute_checks", "schedule_entries", "supplier_contact_logs", "order_replies"];   // 쌓는 기록: 넣기 + 삭제 표시만
 const CURRENT = ["order_meta", "supplier_contact_marks", "user_settings"];                                          // 현재 값: 최신 updated_at이 이긴다
 const TABLES = [...APPEND, ...CURRENT];
 const CONFLICT = { order_meta: "user_id,order_no", supplier_contact_marks: "user_id,supplier_name", user_settings: "user_id" };
-const LABEL = { inform_logs: "안내 기록", quick_notes: "빠른 메모", substitute_checks: "대체품 확인", schedule_entries: "분납 일정", supplier_contact_logs: "공급사 연락 기록", order_meta: "주문 메모(사유·납기 변경)", supplier_contact_marks: "연락함 표시", user_settings: "설정" };
+const LABEL = { inform_logs: "안내 기록", quick_notes: "빠른 메모", substitute_checks: "대체품 확인", schedule_entries: "분납 일정", supplier_contact_logs: "공급사 연락 기록", order_replies: "공급사 회신", order_meta: "주문 메모(사유·납기 변경)", supplier_contact_marks: "연락함 표시", user_settings: "설정" };
 
 const noon = d => d + "T12:00:00.000Z";
 const iso = v => { const t = new Date(v); return isNaN(t) ? "" : t.toISOString(); };
@@ -28,8 +28,9 @@ const BUILD = {
   substitute_checks: (no, e) => ({ id: e.id, order_no: no, state: e.state, note: e.note || "", sup_item: e.supItem || "", sup_spec: e.supSpec || "", sup_qty: e.supQty || "", source: e.source || "", checked_on: nul(e.date), created_at: e.createdAt || new Date(0).toISOString(), ...del(e) }),
   schedule_entries: (no, e) => ({ id: e.id, order_no: no, arrives_on: e.date, qty: e.qty || "", created_at: e.createdAt || noon(e.date), ...del(e) }),
   supplier_contact_logs: (sup, e) => ({ id: e.id, supplier_name: sup, logged_on: e.date, kind: e.kind, channel: e.channel || "기타", promised_on: nul(e.promised), note: e.note || "", created_at: e.createdAt || noon(e.date), ...del(e) }),
+  order_replies: (no, e) => ({ id: e.id, order_no: no, supplier_name: e.supplier || "(알 수 없음)", replied_on: e.date, promised_on: nul(e.promised), channel: e.channel, source: e.source || "manual", note: e.note || "", created_at: e.createdAt || noon(e.date), ...del(e) }),
 };
-const SRC = { inform_logs: "informLog", quick_notes: "quickNotes", substitute_checks: "substChecks", schedule_entries: "scheduleEntries", supplier_contact_logs: "contactLog" };
+const SRC = { inform_logs: "informLog", quick_notes: "quickNotes", substitute_checks: "substChecks", schedule_entries: "scheduleEntries", supplier_contact_logs: "contactLog", order_replies: "orderReplies" };
 
 function toRows(state) {
   const s = Core.normalizeState(state);
@@ -84,6 +85,7 @@ function fromRows(remote) {
   s.substChecks = group(remote.substitute_checks, "order_no", r => ({ id: r.id, state: r.state, note: r.note || "", supItem: r.sup_item || "", supSpec: r.sup_spec || "", supQty: r.sup_qty || "", source: r.source || "", date: day(r.checked_on), ...tail(r) }));
   s.scheduleEntries = group(remote.schedule_entries, "order_no", r => ({ id: r.id, date: day(r.arrives_on), qty: r.qty || "", ...tail(r) }));
   s.contactLog = group(remote.supplier_contact_logs, "supplier_name", r => ({ id: r.id, date: day(r.logged_on), kind: r.kind, channel: r.channel || "기타", promised: day(r.promised_on), note: r.note || "", ...tail(r) }));
+  s.orderReplies = group(remote.order_replies, "order_no", r => ({ id: r.id, date: day(r.replied_on), promised: day(r.promised_on), channel: r.channel, source: r.source || "manual", note: r.note || "", supplier: r.supplier_name === "(알 수 없음)" ? "" : r.supplier_name || "", ...tail(r) }));
   for (const r of remote.order_meta || []) {
     const m = { updatedAt: iso(r.updated_at) };
     if (r.reason) m.reason = r.reason;

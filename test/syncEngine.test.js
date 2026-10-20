@@ -193,3 +193,39 @@ test("자동 올리기: 저장 알림이 여러 번 와도 한 번만 예약하�
   await live[0].fn();
   assert.equal(c.fake.db.inform_logs.length, 2);
 });
+
+const seedReplies = async store => store.save({ ...clean(null), replies: { A: [{ date: "2026-10-14", promised: "2026-10-25", channel: "전화", note: "다음 주", source: "manual", supplier: "가온산업" }, { date: "2026-10-15", promised: "", channel: "메일", note: "", source: "email" }] } });
+
+test("회신: 올리면 order_replies에 본인 행으로 들어가고, 지우면 삭제 표시만 올라가며, 건수 비교가 같다", async () => {
+  const c = setup(); await ready(c); await seedReplies(c.store); await c.sync.setEnabled(true);
+  assert.equal((await c.sync.preview()).counts.order_replies, 2);
+  assert.equal((await c.sync.upload()).ok, true);
+  assert.equal(c.fake.db.order_replies.length, 2);
+  assert.ok(c.fake.db.order_replies.every(r => r.user_id === "user-a" && r.deleted_at == null));
+  assert.equal(c.fake.db.order_replies.find(r => r.source === "email").supplier_name, "(알 수 없음)");
+  const v = (await c.store.load()).view; v.replies.A.shift(); await c.store.save(v);
+  const up = await c.sync.upload();
+  assert.equal(up.sent, 1);
+  assert.equal(c.fake.db.order_replies.length, 2);                                   // 지우지 않는다
+  assert.deepEqual(c.fake.db.order_replies.filter(r => r.deleted_at).map(r => r.deleted_reason), ["user"]);
+  const vf = await c.sync.verify();
+  assert.equal(vf.same, true); assert.deepEqual([vf.tables.order_replies.local, vf.tables.order_replies.remote], [2, 2]);
+});
+
+test("회신: 새 컴퓨터에서 복원하면 살아 있는 회신만 돌아오고, 다시 복원해도 변화가 없다", async () => {
+  const c = setup(); await ready(c); await seedReplies(c.store); await c.sync.setEnabled(true); await c.sync.upload();
+  const v = (await c.store.load()).view; v.replies.A.shift(); await c.store.save(v); await c.sync.upload();
+  const c2 = setup({ fake: c.fake }); await ready(c2);
+  const r = await c2.sync.restore();
+  assert.equal(r.ok, true); assert.equal(r.added.orderReplies, 1);
+  const back = (await c2.store.load()).view.replies.A;
+  assert.equal(back.length, 1); assert.deepEqual([back[0].channel, back[0].source, back[0].supplier], ["메일", "email", ""]);
+  assert.equal((await c2.sync.restore()).changed, 0);
+});
+
+test("회신: 다른 계정의 회신은 복원에 섞이지 않는다", async () => {
+  const c = setup(); await ready(c); await seedReplies(c.store); await c.sync.setEnabled(true); await c.sync.upload();
+  const cb = setup({ fake: c.fake }); await ready(cb, "b@x.test", "pw-b");
+  assert.equal((await cb.sync.restore()).changed, 0);
+  assert.deepEqual((await cb.store.load()).view.replies, {});
+});

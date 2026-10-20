@@ -212,7 +212,7 @@ stateDiagram-v2
 | AU-11-M | 로그인 | 이메일·비밀번호 입력. 실패하면 이유 안내. 가입·비밀번호 재설정 링크 없음 |
 | SY-21-A | 동기화 상태 | 로그인 상태, 마지막 올린 시각, 대기 건수, 오류 |
 
-## 2-2. 신규 표 `ORDER_REPLIES` 계획 (2026-10-20, 기획 단계 · 아직 DB에 만들지 않았다)
+## 2-2. 신규 표 `ORDER_REPLIES` (2026-10-20, **연습용 DB에 만들었다**: `supabase/migrations/20261020074759_create_order_replies.sql`, 올리기·복원 구현됨)
 
 기획안: `docs/FEATURE_회신추적_문의대응.md`. 결정: ADR-0007(새 표·저장 형식 v3), ADR-0008(회신 늦음은 계산).
 
@@ -221,8 +221,8 @@ stateDiagram-v2
 | 하는 일 | 공급사가 주문에 대해 알려 준 **회신과 약속일**을 주문 단위로 쌓는다. 홈의 "회신 늦음"과 주문 상세의 "한눈에"가 이 표를 읽는다 |
 | 종류 | 쌓는 기록. 새 행 넣기와 `deleted_at`·`deleted_reason` 두 열 수정만 된다. 지우기·다른 열 수정은 거부(기존 쌓는 기록 표와 같은 열 단위 권한) |
 | 키 | `id uuid` 기본키 |
-| 제약(안) | `order_no`·`supplier_name` 1~100자, `channel`은 5개 채널, `source in ('manual','email')`, `note` 200자 이하, `(deleted_at is null) = (deleted_reason is null)`, `deleted_reason in ('user','cap')` |
-| 인덱스(안) | `(user_id, order_no, created_at)` |
+| 제약 | `order_no`·`supplier_name` 1~100자, `channel`은 5개 채널, `source in ('manual','email')`, `note` 200자 이하, `(deleted_at is null) = (deleted_reason is null)`, `deleted_reason in ('user','cap')` |
+| 인덱스 | `(user_id, order_no, created_at)` |
 | RLS | 다른 표와 같다: `user_id = (select auth.uid())`, anon 거부, `user_id default auth.uid()` |
 | 저장하지 않는 것 | "회신 늦음" 같은 판정. 기록과 기준일로 앱이 계산한다(ADR-0008). 그래서 판정 열이 없다 |
 | 로컬 | 저장 형식 **v3**에 `orderReplies: { 주문번호: [기록…] }` 추가. 주문당 살아 있는 기록 20건 상한(가정), 한도에 밀리면 이유 `cap`. v2 → v3은 빈 목록 추가라 멱등 |

@@ -8,9 +8,9 @@
 |---|---|
 | 프로젝트 이름 | `nabgi-practice` (지역: 서울 `ap-northeast-2`, 무료 플랜 0원) |
 | 만든 계정 | 2rodmlquf@naver.com 의 Supabase 조직 (Supabase 연결이 이 계정으로 바뀐 상태에서 생성) |
-| 표 | 8개 (`inform_logs`, `quick_notes`, `substitute_checks`, `schedule_entries`, `supplier_contact_logs`, `order_meta`, `supplier_contact_marks`, `user_settings`), 모두 RLS 켜짐, 행 0개 |
+| 표 | 9개 (`inform_logs`, `quick_notes`, `substitute_checks`, `schedule_entries`, `supplier_contact_logs`, `order_replies`, `order_meta`, `supplier_contact_marks`, `user_settings`), 모두 RLS 켜짐 |
 | 보안 점검 | Supabase 보안 점검(advisors) **문제 0건** |
-| QA | 자동 시험 47/47, 직접 해 볼 수 있는 QA 화면과 시험 데이터 있음 → `qa/README.md` |
+| QA | 자동 시험 66/66, 직접 해 볼 수 있는 QA 화면과 시험 데이터 있음 → `qa/README.md` |
 | 아직 안 한 것 | 앱 연결 코드, 실제 로그인 계정 만들기, 가입 닫기·이메일 확인 끄기(화면에서 직접), 로컬 저장 형식 v2 |
 
 프로젝트 주소(URL)와 키는 이 저장소에 적지 않는다(코드가 아닌 설정으로 받는다, ADR-0003·0005). `service_role` 키는 앱·저장소 어디에도 넣지 않는다.
@@ -22,12 +22,14 @@
 | `migrations/20261020022201_create_nabgi_core_tables.sql` | 표 8개, 글자 수·값 범위 제약, 삭제 표시 일관성 제약, 인덱스 |
 | `migrations/20261020022215_secure_nabgi_core_tables.sql` | RLS(본인 행만), anon 차단, 쌓는 기록은 지우기 금지·삭제 표시 열만 수정 가능, 현재 값 표는 최신 `updated_at`이 이기는 트리거 |
 
-두 파일은 Supabase에 적용한 것과 글자 그대로 같다. 새 프로젝트(업무용 등)를 만들면 같은 순서로 적용한다.
+| `migrations/20261020074759_create_order_replies.sql` | 공급사 회신 표 `order_replies`(ADR-0007): 제약, 인덱스, RLS, 열 단위 권한(쌓는 기록 패턴) |
+
+세 파일은 Supabase에 적용한 것과 글자 그대로 같다. 새 프로젝트(업무용 등)를 만들면 같은 순서로 적용한다.
 
 ## DB가 강제하는 규칙 (앱이 알아야 할 것)
 
 - `user_id`는 보내지 않는다. DB가 로그인한 사용자로 채운다(`default auth.uid()`).
-- 쌓는 기록 5개는 **새 행 넣기(insert)** 와 **삭제 표시(`deleted_at`, `deleted_reason` 두 열만 수정)** 만 된다. 다른 열 수정과 지우기는 거부된다. 그래서 올리기는 "새 행은 넣고(이미 있으면 건너뜀), 삭제 표시는 따로 수정"으로 해야 한다. 한 번에 통째로 덮어쓰는 업서트는 안 된다.
+- 쌓는 기록 6개(`order_replies` 포함)는 **새 행 넣기(insert)** 와 **삭제 표시(`deleted_at`, `deleted_reason` 두 열만 수정)** 만 된다. 다른 열 수정과 지우기는 거부된다. 그래서 올리기는 "새 행은 넣고(이미 있으면 건너뜀), 삭제 표시는 따로 수정"으로 해야 한다. 한 번에 통째로 덮어쓰는 업서트는 안 된다.
 - 현재 값 3개는 읽기·넣기·수정만 된다(지우기 없음). 더 오래된 `updated_at`으로 수정하면 조용히 무시된다.
 - 로그인하지 않은 요청(anon)은 어떤 표도 읽거나 쓰지 못한다.
 

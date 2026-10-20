@@ -115,6 +115,48 @@ const nowIso = (offsetMs = 0) => new Date(Date.now() + offsetMs).toISOString();
   r = await ins("supplier_contact_logs", A.token, { id: uuid(), supplier_name: SUP, logged_on: "2026-10-12", kind: "call" });
   check("연락 종류에 엉뚱한 값은 거부된다", bad(r), r.status + " " + code(r));
 
+  console.log("\n[공급사 회신 order_replies]");
+  const rep = (o = {}) => ({ id: uuid(), order_no: ORD("r"), supplier_name: SUP, replied_on: "2026-10-14", promised_on: "2026-10-25", channel: "전화", source: "manual", note: "QA 회신", created_at: nowIso(), ...o });
+  r = await get("order_replies", null, "select=id&limit=1");
+  check("로그인하지 않으면 회신을 읽을 수 없다", denied(r), r.status + " " + code(r));
+  r = await ins("order_replies", null, rep());
+  check("로그인하지 않으면 회신을 쓸 수 없다", denied(r), r.status + " " + code(r));
+  const rp1 = rep();
+  r = await ins("order_replies", A.token, rp1);
+  check("A가 회신을 남긴다 (user_id 자동)", r.status === 201 && r.json[0].user_id === A.userId, r.status + " " + code(r));
+  r = await get("order_replies", B.token, "select=id&order_no=like." + ORD("") + "*");
+  check("B는 A의 회신을 볼 수 없다 (0건)", r.status === 200 && r.json.length === 0);
+  r = await ins("order_replies", B.token, rep({ user_id: A.userId }));
+  check("B가 A의 이름으로 회신을 넣으려 하면 거부된다", denied(r), r.status + " " + code(r));
+  r = await ins("order_replies", A.token, rp1, "resolution=ignore-duplicates,return=minimal");
+  check("같은 id를 다시 올려도 한 건이다 (멱등)", r.status < 300 && (await get("order_replies", A.token, "select=id&id=eq." + rp1.id)).json.length === 1);
+  r = await patch("order_replies", A.token, "id=eq." + rp1.id, { promised_on: "2026-11-01" });
+  check("회신의 약속일을 고칠 수 없다", denied(r), r.status + " " + code(r));
+  r = await patch("order_replies", A.token, "id=eq." + rp1.id, { note: "고쳐 봄" });
+  check("회신의 메모를 고칠 수 없다", denied(r), r.status + " " + code(r));
+  r = await api("/rest/v1/order_replies?id=eq." + rp1.id, { method: "DELETE", token: A.token });
+  check("회신을 지울 수 없고 행은 그대로다", denied(r) && (await get("order_replies", A.token, "select=id&id=eq." + rp1.id)).json.length === 1, r.status + " " + code(r));
+  r = await patch("order_replies", A.token, "id=eq." + rp1.id, { deleted_at: nowIso() });
+  check("회신: 삭제 시각만 넣고 이유를 빼면 거부된다 (짝 제약)", bad(r), r.status + " " + code(r));
+  r = await patch("order_replies", B.token, "id=eq." + rp1.id, { deleted_at: nowIso(), deleted_reason: "user" });
+  check("B는 A의 회신에 삭제 표시를 할 수 없다 (0건)", r.status === 200 && r.json.length === 0);
+  r = await patch("order_replies", A.token, "id=eq." + rp1.id, { deleted_at: nowIso(), deleted_reason: "user" });
+  check("A는 자기 회신에 삭제 표시(user)를 할 수 있다", r.status === 200 && r.json.length === 1 && r.json[0].deleted_reason === "user");
+  r = await ins("order_replies", A.token, rep({ channel: "문자" }));
+  check("회신: 모르는 채널은 거부된다", bad(r), r.status + " " + code(r));
+  r = await ins("order_replies", A.token, rep({ source: "ai" }));
+  check("회신: 출처(source)는 manual·email만 된다", bad(r), r.status + " " + code(r));
+  r = await ins("order_replies", A.token, rep({ note: "가".repeat(201) }));
+  check("회신 메모 201자는 거부된다", bad(r), r.status + " " + code(r));
+  r = await ins("order_replies", A.token, rep({ note: "가".repeat(200), promised_on: null, source: "email" }), "return=minimal");
+  check("회신 메모 200자·약속일 없음·source email은 들어간다", r.status === 201, String(r.status));
+  r = await ins("order_replies", A.token, rep({ supplier_name: "" }));
+  check("회신: 빈 공급사 이름은 거부된다", bad(r), r.status + " " + code(r));
+  r = await ins("order_replies", A.token, rep({ order_no: "" }));
+  check("회신: 빈 주문번호는 거부된다", bad(r), r.status + " " + code(r));
+  r = await ins("order_replies", A.token, rep({ replied_on: null }));
+  check("회신일이 없으면 거부된다", r.status === 400, r.status + " " + code(r));
+
   console.log("\n[현재 값 표: 최신이 이긴다]");
   const meta = (reason, updated_at) => ({ order_no: ORD("m"), reason, updated_at });
   const up = (table, token, body, conflict) => api("/rest/v1/" + table + "?on_conflict=" + conflict, { method: "POST", token, headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body });
@@ -158,7 +200,7 @@ const nowIso = (offsetMs = 0) => new Date(Date.now() + offsetMs).toISOString();
   const tomb = { deleted_at: nowIso(), deleted_reason: "user" };
   for (const [who, U2] of [["A", A], ["B", B]]) {
     let n = 0;
-    for (const t of ["inform_logs", "quick_notes", "substitute_checks", "schedule_entries"]) {
+    for (const t of ["inform_logs", "quick_notes", "substitute_checks", "schedule_entries", "order_replies"]) {
       r = await patch(t, U2.token, "order_no=like.QA-T-" + run + "-*&deleted_at=is.null", tomb);
       n += r.json ? r.json.length : 0;
     }

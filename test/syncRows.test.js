@@ -107,3 +107,49 @@ test("mergeRestored: 기본값뿐인 로컬 설정(처음 켠 앱)은 서버의 
   const mine = Core.fromView({ ...clean(null), soonRules: "내것=1" }, null, { now: "2027-01-01T00:00:00.000Z", newId: ids });                                // 직접 바꾼 로컬 설정은 더 새로우면 이긴다
   assert.equal(Core.mergeRestored(mine, remote, { now: T2 }).state.settings.soonRules, "내것=1");
 });
+
+// ---- 공급사 회신 (order_replies, ADR-0007) ----
+const withReplies = () => Core.fromView({ ...clean(null), replies: {
+  A: [{ date: "2026-10-14", promised: "2026-10-25", channel: "전화", note: "다음 주 도착", source: "manual", supplier: "가온산업" }, { date: "2026-10-15", promised: "", channel: "메일", note: "", source: "email" }] } }, null, { now: T1, newId: ids });
+
+test("toRows: 회신은 order_replies 행이 되고, 공급사가 없으면 '(알 수 없음)', 약속일이 비면 null", () => {
+  const t = Rows.toRows(withReplies());
+  assert.ok(Rows.APPEND.includes("order_replies")); assert.equal(Rows.LABEL.order_replies, "공급사 회신");
+  assert.equal(t.order_replies.length, 2);
+  const [a, b] = t.order_replies.map(x => x.row);
+  assert.deepEqual([a.order_no, a.supplier_name, a.replied_on, a.promised_on, a.channel, a.source, a.note, a.deleted_at, a.deleted_reason], ["A", "가온산업", "2026-10-14", "2026-10-25", "전화", "manual", "다음 주 도착", null, null]);
+  assert.deepEqual([b.supplier_name, b.promised_on, b.source], ["(알 수 없음)", null, "email"]);
+  t.order_replies.forEach(x => { assert.equal("user_id" in x.row, false); assert.equal(x.key, x.row.id); });
+  assert.equal(new Set(t.order_replies.map(x => Object.keys(x.row).sort().join())).size, 1);
+});
+
+test("plan: 회신은 새 행으로 올리고, 지우면 삭제 표시만 보낸다", () => {
+  const s1 = withReplies(), t1 = Rows.toRows(s1);
+  assert.equal(Rows.plan(t1, {}).inserts.order_replies.length, 2);
+  const ledger = {};
+  for (const tb of Rows.TABLES) { ledger[tb] = {}; t1[tb].forEach(x => (ledger[tb][x.key] = Rows.fp(x.row))); }
+  assert.equal(Rows.plan(t1, ledger).total, 0);
+  const v = Core.toView(s1); v.replies.A.shift();
+  const p = Rows.plan(Rows.toRows(Core.fromView(v, s1, { now: T2, newId: ids })), ledger);
+  assert.deepEqual(p.tombstones.order_replies[0].row, { id: s1.orderReplies.A[0].id, deleted_at: T2, deleted_reason: "user" });
+  assert.equal(p.inserts.order_replies, undefined); assert.equal(p.total, 1);
+});
+
+test("fromRows: 회신이 상태 모양으로 돌아오고(공급사 '(알 수 없음)'은 빈 값), 삭제 표시와 깨진 행은 걸러진다. 왕복이 같다", () => {
+  const s1 = withReplies(), t = Rows.toRows(s1);
+  const remote = { order_replies: t.order_replies.map(x => ({ ...x.row, user_id: "u" })) };
+  const back = Rows.fromRows(remote).orderReplies.A;
+  assert.deepEqual(back.map(e => [e.id, e.date, e.promised, e.channel, e.source, e.note, e.supplier]), s1.orderReplies.A.map(e => [e.id, e.date, e.promised, e.channel, e.source, e.note, e.supplier]));
+  const dead = Rows.fromRows({ order_replies: [{ ...remote.order_replies[0], deleted_at: T2, deleted_reason: "cap" }] }).orderReplies.A[0];
+  assert.deepEqual([dead.deletedAt, dead.deletedReason], [T2, "cap"]);
+  assert.equal(Object.keys(Rows.fromRows({ order_replies: [{ ...remote.order_replies[0], channel: "엉뚱", replied_on: null }] }).orderReplies).length, 0);
+});
+
+test("mergeRestored: 복원은 로컬에 없는 회신 id만 더하고 삭제 표시된 것은 받지 않는다", () => {
+  const s1 = withReplies(), t = Rows.toRows(s1);
+  const remote = Rows.fromRows({ order_replies: [...t.order_replies.map(x => x.row), { ...t.order_replies[0].row, id: "dead-1", deleted_at: T2, deleted_reason: "user" }] });
+  const empty = Core.emptyState();
+  const r = Core.mergeRestored(empty, remote, { now: T2 });
+  assert.equal(r.state.orderReplies.A.length, 2); assert.equal(r.added.orderReplies, 2);
+  assert.equal(Core.mergeRestored(r.state, remote, { now: T2 }).added.orderReplies, undefined);
+});

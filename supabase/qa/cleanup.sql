@@ -7,6 +7,7 @@ delete from public.quick_notes where order_no like 'QA-T-%' or order_no like 'QA
 delete from public.substitute_checks where order_no like 'QA-T-%' or order_no like 'QA-PAGE-%';
 delete from public.schedule_entries where order_no like 'QA-T-%' or order_no like 'QA-PAGE-%';
 delete from public.supplier_contact_logs where supplier_name like 'QA-T-%';
+delete from public.order_replies where order_no like 'QA-T-%' or order_no like 'QA-PAGE-%';
 delete from public.order_meta where order_no like 'QA-T-%' or order_no like 'QA-PAGE-%';
 delete from public.supplier_contact_marks where supplier_name like 'QA-T-%';
 
@@ -20,5 +21,6 @@ delete from public.quick_notes where order_no like 'QA-LIVE-%';
 delete from public.substitute_checks where order_no like 'QA-LIVE-%';
 delete from public.schedule_entries where order_no like 'QA-LIVE-%';
 delete from public.supplier_contact_logs where supplier_name like 'QA-LIVE-%';
+delete from public.order_replies where order_no like 'QA-LIVE-%';
 delete from public.order_meta where order_no like 'QA-LIVE-%';
 delete from public.supplier_contact_marks where supplier_name like 'QA-LIVE-%';

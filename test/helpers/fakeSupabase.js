@@ -1,7 +1,7 @@
 // 시험용 가짜 Supabase: 실제 서버가 지키는 규칙(본인 행만, 쌓는 기록은 넣기+삭제 표시 열만, 현재 값은 최신 updated_at이 이김)만 흉내 낸다.
 // 진짜 서버와의 일치는 supabase/qa(47개 시험)와 tools/cloud-live-check.js가 확인한다.
 const PK = { order_meta: ["order_no"], supplier_contact_marks: ["supplier_name"], user_settings: [] };
-const APPEND = ["inform_logs", "quick_notes", "substitute_checks", "schedule_entries", "supplier_contact_logs"];
+const APPEND = ["inform_logs", "quick_notes", "substitute_checks", "schedule_entries", "supplier_contact_logs", "order_replies"];
 const CHANNELS = ["메일", "카톡·문자", "전화", "구두", "기타"];
 
 function createFake({ users = { "a@x.test": { password: "pw-a", id: "user-a" } }, expiresIn = 3600 } = {}) {
@@ -28,7 +28,8 @@ function createFake({ users = { "a@x.test": { password: "pw-a", id: "user-a" } }
       const rows = Array.isArray(body) ? body : [body];
       const keys = new Set(rows.map(r => Object.keys(r).sort().join()));
       if (keys.size > 1) return res(400, { message: "All object keys must match" });
-      for (const r of rows) if (t === "inform_logs" && !CHANNELS.includes(r.channel)) return res(400, { message: "violates check constraint" });
+      for (const r of rows) if ((t === "inform_logs" || t === "order_replies") && !CHANNELS.includes(r.channel)) return res(400, { message: "violates check constraint" });
+      for (const r of rows) if (t === "order_replies" && (!["manual", "email"].includes(r.source) || String(r.note || "").length > 200 || !r.supplier_name)) return res(400, { message: "violates check constraint" });
       if (APPEND.includes(t)) {
         for (const r of rows) if (!table(t).some(x => x.id === r.id)) table(t).push({ ...r, user_id: tk.id });
         return res(201);

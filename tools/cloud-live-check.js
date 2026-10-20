@@ -32,11 +32,12 @@ function machine(users, who) {
     quickNotes: { "QA-LIVE-1": [{ text: "전화로 들음" }] }, reasons: { "QA-LIVE-1": "통관 서류 보완" }, causeOverride: { "QA-LIVE-1": "통관·서류" }, edited: { "QA-LIVE-1": { from: "2026-09-24", to: "2026-10-23" } },
     contacted: { "QA-LIVE-가온": "2026-10-12" }, contactLog: { "QA-LIVE-가온": [{ date: "2026-10-12", kind: "attempt", channel: "메일", promised: "2026-10-20", note: "연락함" }, { date: "2026-10-13", kind: "reply", channel: "전화", promised: "", note: "" }] },
     subst: { "QA-LIVE-1": { state: "의심", note: "규격 다름", supItem: "A-1", supSpec: "", supQty: "", source: "메일", date: "2026-10-12" } }, schedule: { "QA-LIVE-1": [{ date: "2026-10-30", qty: "3" }] },
+    replies: { "QA-LIVE-1": [{ date: "2026-10-14", promised: "2026-10-25", channel: "전화", note: "다음 주 도착", source: "manual", supplier: "QA-LIVE-가온" }, { date: "2026-10-15", promised: "", channel: "메일", note: "", source: "email" }] },
     soonRules: "필터=3", notice: { template: "공지형", alt: "", signature: "QA" } };
   await A.store.save(view);
 
   const pv = await A.sync.preview();
-  check("올릴 건수를 미리 계산한다 (표 8개 모두)", pv.ok && Object.values(pv.counts).every(n => n > 0), JSON.stringify(pv.counts));
+  check("올릴 건수를 미리 계산한다 (표 9개 모두)", pv.ok && Object.values(pv.counts).every(n => n > 0), JSON.stringify(pv.counts));
   const m = await A.sync.migrate();
   check("처음 옮기기: 올리기 성공", m.ok, m.error || "보낸 " + m.sent + "건");
   check("건수 비교가 같다", m.ok && m.verify.same, m.ok ? JSON.stringify(Object.fromEntries(Object.entries(m.verify.tables).map(([k, v]) => [k, v.remote + "/" + v.local]))) : "");
@@ -44,9 +45,9 @@ function machine(users, who) {
   check("다시 올려도 보낼 것이 없다 (멱등)", again.ok && again.sent === 0);
 
   // 지우기 + 값 바꾸기 → 삭제 표시와 갱신만 간다
-  const v2 = (await A.store.load()).view; v2.informed["QA-LIVE-1"].shift(); v2.reasons["QA-LIVE-1"] = "바뀐 사유"; await A.store.save(v2);
+  const v2 = (await A.store.load()).view; v2.informed["QA-LIVE-1"].shift(); v2.replies["QA-LIVE-1"].shift(); v2.reasons["QA-LIVE-1"] = "바뀐 사유"; await A.store.save(v2);
   const up2 = await A.sync.upload();
-  check("지운 기록은 삭제 표시로, 바뀐 값은 갱신으로 올라간다", up2.ok && up2.sent === 2, "보낸 " + up2.sent + "건 " + (up2.error || ""));
+  check("지운 기록(안내·회신)은 삭제 표시로, 바뀐 값은 갱신으로 올라간다", up2.ok && up2.sent === 3, "보낸 " + up2.sent + "건 " + (up2.error || ""));
 
   // 새 컴퓨터(B 아님, 같은 계정)에서 복원
   const A2 = machine(U, "a");
@@ -59,6 +60,8 @@ function machine(users, who) {
   const parts = { 사유: back.reasons["QA-LIVE-1"], 납기변경: back.edited["QA-LIVE-1"] && back.edited["QA-LIVE-1"].to, 연락함: back.contacted["QA-LIVE-가온"], 연락기록: (back.contactLog["QA-LIVE-가온"] || []).length, 약속일: (back.contactLog["QA-LIVE-가온"] || []).map(e => e.promised).sort().pop(), 대체품: back.subst["QA-LIVE-1"] && back.subst["QA-LIVE-1"].state, 분납: back.schedule["QA-LIVE-1"] && back.schedule["QA-LIVE-1"][0].qty, 설정: back.soonRules };
   check("복원: 값(사유·납기 변경·연락함·연락 기록·대체품·분납·설정)이 같다", back.reasons["QA-LIVE-1"] === "바뀐 사유" && back.edited["QA-LIVE-1"].to === "2026-10-23" && back.contacted["QA-LIVE-가온"] === "2026-10-12"
     && back.contactLog["QA-LIVE-가온"].length === 2 && parts.약속일 === "2026-10-20" && back.subst["QA-LIVE-1"].state === "의심" && back.schedule["QA-LIVE-1"][0].qty === "3" && back.soonRules === "필터=3", JSON.stringify(parts));
+  const rb1 = back.replies["QA-LIVE-1"] || [];
+  check("복원: 회신은 지운 것을 빼고 돌아온다 (메일 회신 1건, 공급사 없음 유지)", rb1.length === 1 && rb1[0].channel === "메일" && rb1[0].source === "email" && !rb1[0].supplier && rb1[0].promised === "", JSON.stringify(rb1));
   check("복원: 한 번 더 해도 변화가 없다", (await A2.sync.restore()).changed === 0);
 
   // 계정 격리
