@@ -91,7 +91,7 @@ function daysText(o) { return o.daysLeft == null ? "-" : o.daysLeft < 0 ? "D+" +
 S.reasons = {}; S.causeOverride = {}; S.filter = {}; S.view = "list"; S.bulk = null; S.notice = { template: "사과형", alt: "", signature: "" };
 // ---- 저장: 직접 고친 값을 이 컴퓨터에 남긴다 ----
 let P = Persist.empty(), saveTimer = null;
-S.savedNote = ""; S.contacted = {}; S.contactLog = {}; S.informed = {}; S.quickNotes = {}; S.onlyNeed = false; S.subst = {}; S.schedule = {};
+S.savedNote = ""; S.contacted = {}; S.contactLog = {}; S.informed = {}; S.quickNotes = {}; S.replies = {}; S.onlyNeed = false; S.subst = {}; S.schedule = {};
 
 function showSaved() {
   const c = Persist.counts(P), total = c.edited + c.causeOverride + c.reasons;
@@ -102,7 +102,7 @@ function showSaved() {
 function snapshot() {
   const idc = S.mapping["주문번호"];
   const nos = idc ? S.rows.map(r => r[idc]) : [];
-  P = Persist.mergeState(P, { edited: S.edited, reasons: S.reasons, causeOverride: S.causeOverride, notice: S.notice, contacted: S.contacted, contactLog: S.contactLog, informed: S.informed, quickNotes: S.quickNotes, subst: S.subst, schedule: S.schedule, soonRules: S.soonRules, reAlertDays: S.reAlertDays || undefined }, nos);
+  P = Persist.mergeState(P, { edited: S.edited, reasons: S.reasons, causeOverride: S.causeOverride, notice: S.notice, contacted: S.contacted, contactLog: S.contactLog, informed: S.informed, quickNotes: S.quickNotes, replies: S.replies, subst: S.subst, schedule: S.schedule, soonRules: S.soonRules, reAlertDays: S.reAlertDays || undefined }, nos);
   return P;
 }
 function persist() {
@@ -115,7 +115,7 @@ function persist() {
 }
 // 새로 연 목록에 저장된 기록을 다시 적용한다. 새 파일의 납기가 저장된 값과 다르면 덮어쓰지 않고 알린다.
 function applySaved() {
-  S.reasons = { ...P.reasons }; S.causeOverride = { ...P.causeOverride }; S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.quickNotes = JSON.parse(JSON.stringify(P.quickNotes)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
+  S.reasons = { ...P.reasons }; S.causeOverride = { ...P.causeOverride }; S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.quickNotes = JSON.parse(JSON.stringify(P.quickNotes)); S.replies = JSON.parse(JSON.stringify(P.replies)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
   const r = Persist.applySavedDue(S.rows, S.mapping["주문번호"], S.mapping["납기일"], P.edited);
   S.edited = r.applied;
   const n = Object.keys(r.applied).length;
@@ -126,7 +126,7 @@ async function initState() {
   P = Persist.clean(await window.app.loadState());
   const info = await window.app.stateInfo();                      // 저장소가 알려 주는 것: 예전 형식을 바꿨는지, 손상 파일을 치웠는지, 읽기 전용인지
   S.stateNotice = (info && info.notices || []).map(n => n.message).join(" ");
-  S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.quickNotes = JSON.parse(JSON.stringify(P.quickNotes)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
+  S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.quickNotes = JSON.parse(JSON.stringify(P.quickNotes)); S.replies = JSON.parse(JSON.stringify(P.replies)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
   if (P.notice && Notice.TEMPLATES.includes(P.notice.template)) S.notice = { template: P.notice.template, alt: P.notice.alt, signature: P.notice.signature || "" };
   S.soonRules = P.soonRules;
   S.reAlertDays = P.reAlertDays || null;
@@ -811,6 +811,68 @@ function quickNoteBox(o) {
     ...(notes.length ? [el("ul", { class: "hist" }, ...items)] : [el("p", { class: "sub" }, "전화·메신저로 받은 소식을 여기에 남겨 두세요. 안내 상태에는 영향이 없어요.")]));
 }
 
+// ---- 공급사 회신·약속일, 한눈에, 답변 초안 (FR-21·23·24, CUJ-5·6, ADR-0007·0008) ----
+// 회신은 주문 단위로 쌓고(고치지 않고, 마지막 기록 취소만), "회신 늦음"은 저장하지 않고 src/replies.js가 매번 계산한다.
+const supplierOf = o => (o["공급사"] || "").trim();
+const repliesOf = o => S.replies[NO(o)] || [];
+const replyCtx = o => ({ today: baseDay(), received: o.status === "입고완료", contactedOn: S.contacted[supplierOf(o)] || "", due: o["납기일"] || "" });
+
+// 한눈에: 연구원이 물으면 이것만 보고 답한다 (LS-38-A). 상세 맨 위라서 한 줄씩 짧게 둔다.
+function glanceBox(o) {
+  const g = Replies.glance(repliesOf(o), replyCtx(o)), last = g.last;
+  const flag = g.state === "late" ? el("span", { class: "badge warn" }, "회신 늦음 " + g.daysLate + "일째" + (g.quiet ? " (오늘 연락함)" : ""))
+    : g.state === "due-today" ? el("span", { class: "badge" }, "약속일 오늘") : null;
+  // 두 줄로 줄인 이유: 상세 맨 위에 두면서도 '안내함으로 기록' 버튼이 스크롤 없이 보여야 한다 (FR-17, 1280x820)
+  return el("div", { class: "glance", "data-screen-id": "LS-38-A" },
+    el("p", {}, el("b", {}, "한눈에 "), "납기 " + (o["납기일"] || "-") + " → 약속일 " + (g.promised || "없음") + (g.differs ? " (파일과 달라요)" : "")),
+    el("p", {}, (last ? "회신 " + last.date + " · " + last.channel + (last.note ? " · " + last.note : "") : "공급사 회신 없음 (아래에서 기록)"), " ", ...(flag ? [flag] : [])));
+}
+
+// 공급사 회신 기록 (LS-37-A): 회신 받은 날, 약속일(선택), 방법, 메모. 잘못 넣으면 마지막 기록을 취소하고 다시 넣는다.
+function replyBox(o) {
+  const no = NO(o), list = Replies.history(repliesOf(o));
+  const date = el("input", { type: "date", value: baseDay(), "aria-label": "회신 받은 날" });
+  const promised = el("input", { type: "date", "aria-label": "약속일 (선택)" });
+  const sel = channelSelect();
+  const note = el("input", { type: "text", placeholder: "메모 (예: 통관 서류 보완 후 출고 예정)", maxlength: String(Replies.NOTE_MAX), "aria-label": "회신 메모" });
+  const msg = el("p", { class: "sub " + (S.replyMsg ? "msg-ok" : ""), role: "status" }, S.replyMsg || ""); S.replyMsg = "";
+  const rec = el("button", { class: "primary" }, "회신 기록");
+  rec.addEventListener("click", () => {
+    const v = Replies.validate({ date: date.value, promised: promised.value, channel: sel.value, note: note.value.trim(), supplier: supplierOf(o) });
+    if (!v.ok) { msg.className = "sub msg-err"; msg.textContent = v.error; return; }
+    (S.replies[no] = S.replies[no] || []).push(v.reply);
+    S.replies[no] = S.replies[no].slice(-Persist.REPLIES_MAX);
+    S.replyMsg = "회신을 기록했어요."; persist(); render();
+  });
+  const undo = el("button", { class: "quiet" }, "마지막 기록 취소");
+  undo.disabled = !list.length;
+  undo.addEventListener("click", () => {
+    const last = list[list.length - 1]; if (!last) return;
+    S.replies[no] = S.replies[no].filter(e => e !== last && !(e.id && e.id === last.id));
+    if (!S.replies[no].length) delete S.replies[no];
+    S.replyMsg = "마지막 기록을 취소했어요."; persist(); render();
+  });
+  return el("div", { class: "causebox replybox", "data-screen-id": "LS-37-A" }, el("h3", {}, "공급사 회신·약속일"),
+    el("div", { class: "row" }, el("label", {}, "회신 받은 날 ", date), el("label", {}, "약속일 ", promised)),
+    el("div", { class: "row" }, sel, rec), note, msg,
+    ...(list.length ? [el("ul", { class: "hist" }, ...list.slice().reverse().map(e => el("li", {}, e.date + " · " + e.channel + (e.promised ? " · 약속일 " + e.promised : " · 약속일 없음") + (e.note ? " · " + e.note : ""))))] : []),
+    el("div", { class: "row" }, undo),
+    el("p", { class: "sub" }, "공급사가 알려 준 약속일을 남겨 두면, 그 날이 지나도 회신이 없을 때 홈에서 알려 줘요. 기록은 고치지 않고 쌓여요."));
+}
+
+// 답변 초안 (LS-39-A): 연구원 문의에 답할 이메일 글과 전화 요점. 복사만 한다 (이 앱은 보내지 않는다).
+function draftBox(o) {
+  const d = { no: NO(o), product: o["품목명"] || "", researcher: (o["요청자"] || "").trim(), statusText: Labels.status(o.status) + " (" + daysText(o) + ")", due: o["납기일"] || "", replies: repliesOf(o), ...replyCtx(o), signature: S.notice.signature || "" };
+  const mail = el("textarea", { rows: "9", readonly: "", "aria-label": "이메일 답변 초안" }); mail.value = Replies.draftEmail(d);
+  const call = el("textarea", { rows: "3", readonly: "", "aria-label": "전화 요점" }); call.value = Replies.draftCall(d);
+  const copyMail = el("button", {}, "이메일 답변 복사"), copyCall = el("button", {}, "전화 요점 복사");
+  copyMail.addEventListener("click", () => copyText(mail.value, copyMail));
+  copyCall.addEventListener("click", () => copyText(call.value, copyCall));
+  return el("details", { class: "causebox draftbox", "data-screen-id": "LS-39-A" }, el("summary", {}, "답변 초안 (이메일·전화 요점)"),
+    el("p", { class: "sub" }, "상태, 공급사 마지막 회신, 약속일로 채웠어요. 모르는 값은 '확인 중'으로 써요. 복사해서 직접 보내세요."),
+    mail, el("div", { class: "row" }, copyMail), call, el("div", { class: "row" }, copyCall));
+}
+
 const isNarrow = () => window.matchMedia("(max-width: 1000px)").matches;
 // 위에 붙어 있는 머리(제목·탭·기준일)의 아래쪽 끝. 요소로 스크롤할 때 머리에 가려지지 않게 그만큼 비워 둔다.
 function stickyBottom() { let b = 0; document.querySelectorAll("header, .top, .subbar").forEach(h => { if (getComputedStyle(h).position === "sticky") b = Math.max(b, h.getBoundingClientRect().bottom); }); return b; }
@@ -834,7 +896,7 @@ function renderDetail() {
     el("h2", {}, o["주문번호"]),
     el("p", {}, badge(o.status), " ", o.reason),
     S.edited[o["주문번호"]] ? el("p", { class: "edited" }, "이메일 기준으로 납기를 바꿨어요 (원래 값: " + S.edited[o["주문번호"]].from + ")") : el("span", {}),
-    informedBox(o), noticeBox(o), quickNoteBox(o),
+    glanceBox(o), informedBox(o), replyBox(o), noticeBox(o), draftBox(o), quickNoteBox(o),
     el("p", { class: "sub" }, "아래는 파일에 있던 원래 값이에요."), dl,
     o.status === "지연" ? causeBox(o) : el("span", {}),
     ...(S.schedule[NO(o)] ? [schedBlock(o)] : []), substBox(o));

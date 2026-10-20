@@ -57,6 +57,39 @@
     return { late: late.sort(order), quiet: quiet.sort(order) };
   }
 
-  const api = { CHANNELS, NOTE_MAX, daysBetween, history, latest, validate, status, lateOrders };
+  // 한눈에: 주문 하나의 회신 쪽 요약 (FR-23). 화면이 글자로 바꿔 보여 주기 쉽게 사실만 돌려준다.
+  //   ctx = { today, received, contactedOn, due(파일의 납기일 글자) }
+  function glance(list, ctx) {
+    const st = status(list, ctx), last = st.last;
+    const differs = !!(st.promised && ctx && ctx.due && /^\d{4}-\d{2}-\d{2}$/.test(ctx.due) && ctx.due !== st.promised);   // 파일의 납기와 공급사 약속일이 다르면 눈에 띄게
+    return { state: st.state, promised: st.promised || "", differs, last, daysLate: st.daysLate || 0, daysLeft: st.daysLeft || 0, quiet: !!st.quiet };
+  }
+
+  const dash = v => (v == null || v === "" ? "확인 중" : v);          // 모르는 값은 빈칸이 아니라 "확인 중"으로 쓴다 (FR-24)
+  const lastText = last => (last ? last.date + " " + last.channel + "로 회신을 받았어요" + (last.note ? " (" + last.note + ")" : "") : "");
+
+  // 연구원 문의에 답할 이메일 글 (복사해서 쓴다. 이 앱은 보내지 않는다).
+  //   d = { no, product, supplier, researcher, statusText, due, replies(글), today, received, contactedOn, signature }
+  function draftEmail(d) {
+    const g = glance(d.replies, { today: d.today, received: d.received, contactedOn: d.contactedOn, due: d.due }), last = g.last;
+    const mid = last ? last.date + "에 " + last.channel + "로 " + (g.promised ? "약속일 " + g.promised + "로 안내받았습니다" : "회신을 받았으나 새 일정은 받지 못했습니다") + (last.note ? " (" + last.note + ")" : "") : "아직 받은 회신이 없습니다";
+    const next = g.state === "late" ? "약속일이 지나 공급사에 확인하고 있습니다" : g.state === "waiting" || g.state === "due-today" ? "약속일에 맞춰 입고 여부를 확인하겠습니다" : g.state === "done" ? "입고가 확인되었습니다" : "공급사에 일정을 확인하고 있습니다";
+    return ["제목: [납기 문의 회신] " + d.no + (d.product ? " " + d.product : ""), "",
+      (d.researcher ? d.researcher + "님, " : "") + "안녕하세요.", "문의하신 " + d.no + (d.product ? "(" + d.product + ")" : "") + " 진행 상황을 알려 드립니다.", "",
+      "- 현재 상태: " + dash(d.statusText) + " (파일 납기 " + dash(d.due) + ")",
+      "- 공급사 회신: " + mid,
+      "- 다음 조치: " + next, "",
+      "새 소식이 있으면 바로 다시 알려 드리겠습니다." + (d.signature ? "\n" + d.signature : "")].join("\n");
+  }
+
+  // 전화로 말할 요점 3줄
+  function draftCall(d) {
+    const g = glance(d.replies, { today: d.today, received: d.received, contactedOn: d.contactedOn, due: d.due }), last = g.last;
+    return ["1. 상태: " + d.no + (d.product ? " " + d.product : "") + " — " + dash(d.statusText) + ", 파일 납기 " + dash(d.due),
+      "2. 공급사: " + (last ? lastText(last) + (g.promised ? ", 약속일 " + g.promised : ", 새 약속일은 아직 없어요") + (g.state === "late" ? " (" + g.daysLate + "일 지남)" : "") : "아직 받은 회신이 없어요"),
+      "3. 다음: " + (g.state === "late" ? "공급사에 다시 확인하고 결과를 바로 알려 드릴게요" : g.state === "done" ? "입고가 확인됐어요" : g.promised ? "약속일에 맞춰 확인하고 알려 드릴게요" : "공급사에 일정을 확인하고 알려 드릴게요")].join("\n");
+  }
+
+  const api = { glance, draftEmail, draftCall, CHANNELS, NOTE_MAX, daysBetween, history, latest, validate, status, lateOrders };
   if (typeof module !== "undefined") module.exports = api; else root.Replies = api;
 })(typeof window !== "undefined" ? window : globalThis);
