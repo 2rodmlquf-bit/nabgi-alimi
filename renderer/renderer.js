@@ -1066,6 +1066,21 @@ function renderEmailItems(items) {
       });
       card.append(el("div", { class: "row" }, b));
     } else if (S.edited[it.orderNo] && cur.value === it.dueDate) card.append(el("div", { class: "edited" }, "반영했어요 (원래 값: " + S.edited[it.orderNo].from + ")"));
+    // 회신으로 기록 제안 (FR-25): 제안만 하고, 사람이 누를 때만 기록한다. 근거 문장이 확인된 메일만, 신뢰도가 낮으면 약속일을 비운다.
+    if (cur.found) {
+      const sug = Replies.suggestFromMail(it, { today: baseDay(), supplier: (cur.row[S.mapping["공급사"]] || "").trim(), existing: S.replies[it.orderNo] || [] });
+      if (sug.ok) {
+        const b = el("button", {}, "공급사 회신으로 기록");
+        b.addEventListener("click", () => {
+          const v = Replies.validate(sug.reply);
+          if (!v.ok) return;
+          (S.replies[it.orderNo] = S.replies[it.orderNo] || []).push(v.reply);
+          S.replies[it.orderNo] = S.replies[it.orderNo].slice(-Persist.REPLIES_MAX);
+          persist(); render(); renderEmailItems(items);
+        });
+        card.append(el("div", { class: "row replysuggest" }, b, el("span", { class: "sub" }, "이 메일을 회신으로 기록할까요? 회신 받은 날 " + sug.reply.date + (sug.reply.promised ? " · 약속일 " + sug.reply.promised : " · 약속일 없음" + (sug.dateDropped ? " (신뢰도가 낮아 날짜는 비웠어요)" : "")))));
+      } else if (sug.duplicate) card.append(el("div", { class: "sub" }, sug.reason));
+    }
     if (it.older && it.older.length) {
       const d = el("details", { class: "sentbox" }, el("summary", {}, "같은 주문을 다룬 이전 메일 " + it.older.length + "통 (이 카드는 가장 최근 메일 기준이에요)"));
       it.older.forEach(o => d.append(el("p", { class: "sub" }, fmtMailDate(o.mail.date) + " · " + (o.mail.subject || "(제목 없음)") + " → " + (o.dueDate || "확인 필요"))));
