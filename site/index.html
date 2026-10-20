@@ -108,11 +108,29 @@ code { background: var(--accent-soft); padding: 1px 6px; border-radius: 6px; fon
     <p class="sub">모두 가상 샘플 데이터입니다.</p>
     <figure><img src="img/00-home.png" alt="홈 화면: 안내할 것, 회신 늦음, 오늘 연락할 곳 세 묶음" loading="lazy"><figcaption><b>홈</b> — 파일을 열면 가장 먼저 보이는 "오늘 할 일"입니다. 항목을 누르면 그 주문으로 갑니다.</figcaption></figure>
     <figure><img src="img/01-list.png" alt="예외 목록 화면: 위쪽에 목록 열기와 탭, 요약 카드와 주문 표" loading="lazy"><figcaption><b>예외 목록</b> — 지연 7 · 임박 6 · 확인 필요 2처럼 상태별로 요약하고, 안내 현황 막대로 아직 안내하지 않은 주문을 보여 줍니다.</figcaption></figure>
-    <figure><img src="img/02-detail.png" alt="주문 상세: 연구원 안내 기록과 안내함으로 기록 단추" loading="lazy"><figcaption><b>주문 상세</b> — 가장 자주 누르는 "안내함으로 기록" 단추가 스크롤 없이 보이도록 영역 순서를 바꿨습니다.</figcaption></figure>
-    <figure><img src="img/06-reply.png" alt="주문 상세 위쪽 한눈에: 납기에서 약속일로, 회신 늦음 3일째" loading="lazy"><figcaption><b>공급사 회신·약속일</b> — 약속일이 지난 주문에 "회신 늦음 3일째"가 붙습니다. 그날 공급사에 연락했으면 조용히 둡니다.</figcaption></figure>
+    <figure><img src="img/02-detail.png" alt="주문 상세 창: 연구원 안내 기록과 공급사 회신·약속일이 나란히 있는 넓은 창" loading="lazy"><figcaption><b>주문 상세</b> — 주문을 누르면 가운데 넓은 창이 열립니다. 예전에는 오른쪽 340px 좁은 칸에 세로로 길게 들어 있어 입력이 불편했습니다. 지금은 안내 기록과 공급사 회신이 나란히 놓이고, 닫기 단추나 Esc로 닫으면 보던 줄로 돌아옵니다. 좁은 창(900x600)에서도 스크롤 없이 "안내함으로 기록"이 보입니다.</figcaption></figure>
+    <figure><img src="img/06-reply.png" alt="주문 상세 위쪽 한눈에: 납기에서 약속일로, 회신 늦음 3일째" loading="lazy"><figcaption><b>공급사 회신·약속일</b> — 약속일이 지난 주문에 "회신 늦음 3일째"가 붙습니다. 그날 공급사에 연락했으면 조용히 둡니다. 회신은 지우지 않고 쌓으며, 잘못 넣으면 마지막 기록만 취소합니다.</figcaption></figure>
+    <figure><img src="img/07-ask.png" alt="연구원으로 거르면 위에 열린 주문 3건(지연 2, 임박 0, 확인 필요 1), 안내할 것 3건 요약이 보이는 화면" loading="lazy"><figcaption><b>연구원 문의 요약</b> — 연구원이 "내 주문 어떻게 됐어요?"라고 물으면, 그 연구원으로 거르는 즉시 열린 주문과 안내할 것을 한 줄로 답할 수 있습니다.</figcaption></figure>
+    <figure><img src="img/08-mail-suggest.png" alt="이메일 납기 추출 패널의 공급사 회신으로 기록 단추" loading="lazy"><figcaption><b>메일에서 회신 기록 제안</b> — 메일에서 근거 문장이 확인된 주문에만 "공급사 회신으로 기록"을 제안합니다. 날짜가 애매하면 약속일을 비워 두고, 사람이 누를 때만 기록합니다(자동 기록 없음).</figcaption></figure>
     <figure><img src="img/03-contact.png" alt="오늘 연락할 곳 화면" loading="lazy"><figcaption><b>오늘 연락할 곳</b> — 공급사별 연락 이력과 다음 행동을 정리합니다.</figcaption></figure>
     <figure><img src="img/04-analysis.png" alt="지연 분석 화면" loading="lazy"><figcaption><b>지연 분석</b> — 지연 원인(통관·서류, 생산 지연 등)의 비중을 봅니다.</figcaption></figure>
     <figure><img src="img/05-cloud.png" alt="클라우드 저장 패널: 상단에 모두 올렸어요 상태, 단계별 접이식" loading="lazy"><figcaption><b>클라우드 저장</b> — 기본은 이 컴퓨터에만 저장하고, 켜면 기록을 Supabase에 사본으로 올립니다. 현재 상태와 지금 할 일을 맨 위에 보여 주고 끝낸 단계는 접습니다.</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>버전별 변경점</h2>
+    <p class="sub">전체 이력은 <a href="https://github.com/2rodmlquf-bit/nabgi-alimi/blob/main/CHANGELOG.md">CHANGELOG</a>에 있습니다.</p>
+    <table>
+      <thead><tr><th>버전</th><th>바뀐 것</th></tr></thead>
+      <tbody>
+        <tr><td>v0.7.1</td><td><b>주문 상세를 가운데 넓은 창으로.</b> 오른쪽 좁은 칸의 입력 불편을 없앴고, 닫기·Esc, 좁은 창 대응을 넣었습니다.</td></tr>
+        <tr><td>v0.7.0</td><td><b>공급사 회신 추적.</b> 회신·약속일 기록, "회신 늦음" 계산, 답변 초안, 홈 탭, 연구원 문의 요약, 메일에서 회신 기록 제안, 저장 형식 v3(회신 목록 추가, 이전 파일은 자동 변환·백업).</td></tr>
+        <tr><td>v0.6.0</td><td><b>클라우드 저장(선택).</b> 올리기·복원·로그인, 메뉴를 업무 순서로 재배치, JSON 내보내기, 같은 주문번호 경고.</td></tr>
+        <tr><td>v0.5.0</td><td>안내 추적 보완, 오류 경로·규모 점검, 조건부 출시.</td></tr>
+      </tbody>
+    </table>
   </div>
 </section>
 
@@ -137,6 +155,21 @@ code { background: var(--accent-soft); padding: 1px 6px; border-radius: 6px; fon
 
 <section>
   <div class="wrap">
+    <h2>AI와 일하는 방식 (하네스)</h2>
+    <p class="sub">코딩 AI에게 "알아서 해 줘"라고 하지 않고, 일하는 순서와 규칙을 파일로 정해 두고 시켰습니다. 문서가 먼저, 코드는 그다음입니다.</p>
+    <div class="grid">
+      <div class="card"><h3>문서 먼저</h3><p>문제 정의 → 화면 구조(IA) → 사용자 여정 → PRD → ERD → spec·plan → Intent 순서로 한 문서씩 승인한 뒤 개발합니다. 끝나면 문서를 갱신합니다.</p></div>
+      <div class="card"><h3>인터뷰로 결정</h3><p>애매한 것은 AI가 추측하지 않고 한 번에 하나씩 물어서 정합니다. 용어는 용어집에, 되돌리기 어려운 결정은 ADR(결정 기록) 8건에 남겼습니다.</p></div>
+      <div class="card"><h3>코드 규칙</h3><p>파일 500줄·함수 40줄 상한, 안쪽 업무 규칙이 바깥 화면·DB를 가져다 쓰지 않는 방향 규칙, 판정·계산은 단위 시험 필수.</p></div>
+      <div class="card"><h3>자율성의 선</h3><p>파일 수정·시험·로컬 커밋은 알아서, push·배포·삭제·서비스 쓰기·결제는 반드시 멈추고 묻게 했습니다. 무료 플랜만, 가상 데이터만 씁니다.</p></div>
+      <div class="card"><h3>QA는 둘로 나눔</h3><p>AI가 직접 실행한 QA(Pass/Fail/No Run과 증거)와, 사람이 눈으로 봐야 하는 QA(글이 읽기 편한지, 실제 설치 등)를 시트에 따로 등록합니다. 증거 없는 Pass는 쓰지 않습니다.</p></div>
+      <div class="card"><h3>찾은 문제도 기록</h3><p>시험이 통과해도 화면을 열어 확인했고, 그렇게 찾은 문제(예: 2열 배치가 안내 문구를 쪼개던 것)는 고친 뒤 시험에 반영했습니다.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
     <h2>클라우드 저장은 이렇게 설계했습니다</h2>
     <div class="grid">
       <div class="card"><h3>이 컴퓨터가 기준</h3><p>기록은 항상 로컬에 먼저 저장합니다. 인터넷이 끊겨도 기록이 막히지 않고, 돌아오면 이어서 올립니다.</p></div>
@@ -151,9 +184,9 @@ code { background: var(--accent-soft); padding: 1px 6px; border-radius: 6px; fon
   <div class="wrap">
     <h2>얼마나 확인했나요</h2>
     <div class="kpi">
-      <div><b>346</b><span>단위 시험</span></div>
-      <div><b>16</b><span>화면 시나리오(E2E)</span></div>
-      <div><b>47</b><span>DB 규칙 시험</span></div>
+      <div><b>381</b><span>단위 시험</span></div>
+      <div><b>19</b><span>화면 시나리오(E2E)</span></div>
+      <div><b>66</b><span>DB 규칙 시험</span></div>
       <div><b>0</b><span>보안 점검 문제 (Supabase)</span></div>
     </div>
     <p class="sub" style="margin-top:12px">시험이 통과해도 믿지 않고 실제 화면을 열어 확인했고, 그렇게 찾은 문제들은 <a href="https://github.com/2rodmlquf-bit/nabgi-alimi/blob/main/docs/BACKLOG.md">BACKLOG</a>에 기록했습니다.</p>
