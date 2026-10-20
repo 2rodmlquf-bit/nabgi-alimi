@@ -52,3 +52,4 @@ node tools/cloud-live-check.js   # 진짜 연습용 Supabase 점검 (끝나면 s
 | ERD, 저장 형식, ADR, 기획안 | `docs/` |
 | 화면 ID 목록 | `docs/screens.json` |
 | 용어집 | `GLOSSARY.md` |
+| **QA 파일** | Google 시트 `납기알리미` (https://docs.google.com/spreadsheets/d/1MPOEU9jO7amhPdK3BUV0PIgyafzjgP3qbtwWc2uVh3Q) — 탭 `Claude QA 결과`(내가 한 것), `직접 QA 필요`(사람이 할 것). 기능을 끝내면 `qa` 스킬로 등록한다 |
