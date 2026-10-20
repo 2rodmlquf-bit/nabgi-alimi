@@ -1,6 +1,6 @@
 # ERD (Supabase 저장 + 로그인)
 
-갱신: 2026-10-20 · 근거: `docs/DB_PLAN.md`(기획), `docs/adr/0001~0005`, `GLOSSARY.md`, `납기-문제정의/prd_supabase.md` · 상태: **설계만. 구현은 시작하지 않았다.**
+갱신: 2026-10-20 · 근거: `docs/DB_PLAN.md`(기획), `docs/adr/0001~0005`, `GLOSSARY.md`, `납기-문제정의/prd_supabase.md` · 상태: **DB는 연습용 Supabase 프로젝트에 구축됨(2026-10-20, `supabase/`). 앱 연결 코드는 아직 없다.** 위 ERD의 `LOCAL_*`은 아직 구현 전
 
 이 문서가 ERD의 **유일한 원본**이다(`DB_PLAN.md`는 이 문서를 가리킨다). 이번에 **로그인**을 넣었다: 계정은 Supabase가 관리하는 `AUTH_USERS`, 이 PC에만 있는 연결 정보(`LOCAL_CLOUD_LINK`)와 세션(`LOCAL_SESSION`)을 점선으로 이었다.
 
