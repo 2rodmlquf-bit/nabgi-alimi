@@ -1304,6 +1304,21 @@ const cloudList = (obj, names) => Object.entries(obj || {}).filter(([, n]) => n 
 async function flushSave() { clearTimeout(saveTimer); return window.app.saveState(snapshot()); }   // 올리기·복원 전에 화면의 최신 기록을 먼저 파일에 쓴다
 function cloudBusy(on) { ["cloudUpload", "cloudToggle", "cloudMigrate", "cloudMigrateGo", "cloudRestore", "cloudVerify", "cloudUnlink", "cloudLogout", "cloudLogin", "cloudConfigSave"].forEach(id => { $(id).disabled = on; }); }
 
+// 지금 상태 → 맨 위 큰 문구, 지금 할 일, 단계 표시(끝낸 단계는 접는다). 단계의 상태가 바뀔 때만 열고 닫아서, 사용자가 직접 펼친 것은 그대로 둔다.
+const cloudStepState = {};
+function cloudStage(st) {
+  if (!st.configured) return { step: 1, tone: "neutral", title: "아직 연결하지 않았어요 (이 컴퓨터에만 저장 중)", next: "1단계: 프로젝트 주소와 공개 키를 넣고 저장하세요." };
+  if (!st.loggedIn) return { step: 2, tone: "neutral", title: "프로젝트는 연결됐고, 로그인이 필요해요", next: "2단계: 이메일과 비밀번호로 로그인하세요." + (st.ownerBound ? " (이 컴퓨터는 이미 계정 한 개에 묶여 있어요. 그 계정으로 로그인하세요.)" : "") };
+  if (!st.enabled) return { step: 3, tone: "warn", title: st.email + " 로 로그인됨 · 클라우드 저장은 꺼져 있어요", next: st.lastSyncedAt ? "'클라우드 저장 켜기'를 누르면 앞으로 기록이 자동으로 올라가요." : "3단계: 아래 '처음 한 번' 에서 '옮길 내용 확인'을 눌러 지금 기록을 옮기세요." };
+  if (st.lastError) return { step: 3, tone: "err", title: "서버에 올리지 못했어요 (기록은 이 컴퓨터에 안전해요)", next: st.lastError.indexOf("인터넷") >= 0 ? "인터넷 연결을 확인한 뒤 '지금 올리기'를 누르세요. 연결되면 자동으로도 다시 시도해요." : "'지금 올리기'를 다시 눌러 보세요. 계속 안 되면 이 문구를 알려 주세요: " + st.lastError };
+  if (st.pending) return { step: 3, tone: "warn", title: "올릴 기록 " + st.pending + "건을 기다리는 중이에요", next: "잠시 기다리면 자동으로 올라가요. 바로 올리려면 '지금 올리기'를 누르세요." };
+  return { step: 4, tone: "ok", title: "모두 올렸어요 · 마지막 " + cloudWhen(st.lastSyncedAt), next: "할 일은 없어요. 기록을 남기면 자동으로 올라가요. 다른 컴퓨터에서 쓰려면 '서버에서 복원'을 누르세요." };
+}
+function cloudSetStep(id, badgeId, state, label) {                       // state: done | current
+  const box = $(id), badge = $(badgeId);
+  badge.textContent = state === "done" ? "✓ 완료" : "지금 할 차례"; badge.className = "stepbadge " + state;
+  if (cloudStepState[id] !== state) { cloudStepState[id] = state; box.open = state !== "done"; }
+}
 async function cloudRefresh() {
   const st = await window.app.cloudStatus();
   if (!st || st.ok === false) { $("cloudState").textContent = st && st.error || ""; return; }
@@ -1314,7 +1329,21 @@ async function cloudRefresh() {
     info.textContent = st.lastError ? "클라우드: 올리지 못했어요 — " + st.lastError + (st.pending ? " (대기 " + st.pending + "건, 기록은 이 컴퓨터에 안전해요)" : "")
       : st.pending ? "클라우드: 올릴 기록 " + st.pending + "건 대기 중 · 마지막 " + cloudWhen(st.lastSyncedAt) : "클라우드: 모두 올렸어요 · 마지막 " + cloudWhen(st.lastSyncedAt);
   }
+  const g = cloudStage(st);
+  $("cloudHero").className = "cloudhero tone-" + g.tone; $("cloudHeroTitle").textContent = g.title; $("cloudNext").textContent = g.next;
+  const labels = ["① 연결", "② 로그인", "③ 올리기·복원"];
+  $("cloudSteps").replaceChildren(...labels.map((t, i) => { const li = document.createElement("li"); li.textContent = (i + 1 < g.step ? "✓ " : "") + t; li.className = i + 1 < g.step ? "done" : i + 1 === g.step ? "current" : ""; return li; }));
   $("cloudLoginBlock").hidden = !st.configured; $("cloudOpsBlock").hidden = !st.loggedIn;
+  cloudSetStep("cloudConfigBlock", "cloudBadge1", st.configured ? "done" : "current");
+  if (st.configured) cloudSetStep("cloudLoginBlock", "cloudBadge2", st.loggedIn ? "done" : "current");
+  if (st.loggedIn) {
+    const migrated = st.enabled && !!st.lastSyncedAt;
+    cloudSetStep("cloudOpsBlock", "cloudBadge3", "current");
+    $("cloudBadge3").textContent = st.enabled ? "켜짐" : "꺼짐";
+    const mig = $("cloudMigrateBlock"), mb = $("cloudBadgeMig");
+    mb.textContent = migrated ? "✓ 완료" : "지금 할 차례"; mb.className = "stepbadge " + (migrated ? "done" : "current");
+    if (cloudStepState.mig !== migrated) { cloudStepState.mig = migrated; mig.open = !migrated; }
+  }
   $("cloudConfigMsg").textContent = st.configured ? "저장돼 있어요: " + st.projectUrl : "";
   $("cloudState").textContent = !st.configured ? "상태: 아직 연결 전이에요 (이 컴퓨터에만 저장)" : !st.loggedIn ? "상태: 프로젝트는 연결됐고 로그인이 필요해요" + (st.ownerBound ? " (이 컴퓨터는 이미 계정 한 개에 묶여 있어요)" : "")
     : "상태: " + st.email + " 로 로그인됨 · 클라우드 저장 " + (st.enabled ? "켜짐" : "꺼짐") + " · 올릴 기록 " + st.pending + "건 · 마지막 올림 " + cloudWhen(st.lastSyncedAt) + (st.lastError ? " · 최근 오류: " + st.lastError : "");
