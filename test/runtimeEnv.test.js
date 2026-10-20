@@ -37,3 +37,13 @@ test("파일 열기 우회는 E2E 모드에서만 동작한다", () => {
   assert.equal(e2eOpenFile({ NABGI_E2E: "1" }), null);                             // 파일 경로가 없음
   assert.equal(e2eOpenFile({ NABGI_E2E: "1", NABGI_OPEN_FILE: "orders.csv" }), null); // 상대 경로 거부
 });
+
+const ABS_FILE = path.resolve("C:/tmp/a.json");
+test("NABGI_SAVE_FILE과 NABGI_E2E_HIDDEN은 E2E 모드에서만, 절대 경로일 때만 쓰인다", () => {
+  const R = require("../src/runtimeEnv");
+  assert.equal(R.e2eSavePath({ NABGI_SAVE_FILE: ABS_FILE }), null);                                   // E2E가 아니면 무시
+  assert.equal(R.e2eSavePath({ NABGI_E2E: "1", NABGI_USER_DATA: ABS, NABGI_SAVE_FILE: "상대/경로.json" }), null);
+  assert.equal(R.e2eSavePath({ NABGI_E2E: "1", NABGI_USER_DATA: ABS, NABGI_SAVE_FILE: ABS_FILE }), ABS_FILE);
+  assert.equal(R.e2eHidden({ NABGI_E2E_HIDDEN: "1" }), false);
+  assert.equal(R.e2eHidden({ NABGI_E2E: "1", NABGI_USER_DATA: ABS, NABGI_E2E_HIDDEN: "1" }), true);
+});

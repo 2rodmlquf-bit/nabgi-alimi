@@ -198,6 +198,12 @@
       <div class="row"><button id="cloudUnlink" class="quiet">연결 풀기</button><span id="cloudUnlinkMsg" class="sub" role="status"></span></div>
     </details>
   </details>
+
+  <details class="block step" id="cloudExportBlock">
+    <summary><span class="steptitle">내 기록 파일로 내보내기 (JSON)</span></summary>
+    <p class="sub">지금 이 컴퓨터의 기록(안내 기록·메모·연락 기록·설정)을 JSON 파일로 저장해요. 로그인이나 인터넷 없이도 돼요. 비밀번호·로그인 정보는 들어가지 않아요. 백업용으로 쓰세요.</p>
+    <div class="row"><button id="cloudExport">내보내기</button><span id="cloudExportMsg" class="sub" role="status"></span></div>
+  </details>
 </section>
 
 <section id="mapPanel" class="panel" data-screen-id="MP-11-M" hidden>
@@ -261,6 +267,7 @@
 <script src="../src/labels.js"></script>
 <script src="../src/persist.js"></script>
 <script src="../src/columns.js"></script>
+<script src="../src/duplicates.js"></script>
 <script src="../src/mailfilter.js"></script>
 <script src="../src/supplier.js"></script>
 <script src="../src/reask.js"></script>

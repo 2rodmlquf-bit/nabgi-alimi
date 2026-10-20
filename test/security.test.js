@@ -50,7 +50,7 @@ test("preload가 화면에 여는 기능 목록 (늘어나면 이 목록과 함�
   const names = [...code("preload.js").matchAll(/^\s{2}(\w+):/gm)].map(m => m[1]).sort();
   assert.deepEqual(names, ["clearKey", "clearState", "extractEmail", "keyStatus", "loadSample", "loadSampleMails", "loadSampleSupplier", "loadState", "mapColumns",
     "openCsv", "openMailAttachment", "openOrders", "pickMailFolder", "pickSupplierFile", "saveFile", "saveKey", "saveState", "stateInfo",
-    "cloudStatus", "cloudConfigure", "cloudLogin", "cloudLogout", "cloudEnable", "cloudUpload", "cloudPreview", "cloudMigrate", "cloudRestore", "cloudVerify", "cloudUnlink"].sort());   // 클라우드 기능 11개는 ADR-0006. 토큰·키를 돌려주는 것은 없다
+    "exportState", "cloudStatus", "cloudConfigure", "cloudLogin", "cloudLogout", "cloudEnable", "cloudUpload", "cloudPreview", "cloudMigrate", "cloudRestore", "cloudVerify", "cloudUnlink"].sort());   // 클라우드 기능 11개는 ADR-0006. 토큰·키를 돌려주는 것은 없다
   assert.doesNotMatch(read("preload.js"), /require\((?!"electron")/);               // electron 말고 다른 모듈을 끌어오지 않는다
   assert.ok(!names.some(n => /^(getKey|readKey|key)$/.test(n)), "키 값을 돌려주는 기능이 없어야 한다");
 });

@@ -3,6 +3,7 @@
 // NABGI_USER_DATA  : 저장 폴더(state.json, 키 파일)를 이 절대 경로로 바꾼다. 테스트가 실제 사용자 데이터를 건드리지 않게 한다.
 // NABGI_E2E=1      : E2E 모드. 반드시 NABGI_USER_DATA와 함께 써야 하고, 없으면 시작하지 않는다 (실제 데이터 보호).
 // NABGI_E2E_HIDDEN=1: E2E 모드에서만 앱 창을 화면에 띄우지 않는다 (시험 중 창이 깜빡이지 않게. e2e/run.js --quiet).
+// NABGI_SAVE_FILE  : E2E 모드에서만 "내보내기" 저장 창 대신 이 절대 경로에 저장한다.
 // NABGI_OPEN_FILE  : E2E 모드에서만 "CSV 열기" 대화상자 대신 이 절대 경로의 파일을 연다 (대화상자는 자동화할 수 없다).
 const path = require("path");
 
@@ -31,4 +32,7 @@ function e2eOpenFile(env) {
 // E2E 모드일 때만 창을 숨긴다. 일반 실행에서는 환경변수가 있어도 무시한다.
 const e2eHidden = env => isE2E(env) && env.NABGI_E2E_HIDDEN === "1";
 
-module.exports = { e2eHidden, userDataOverride, isE2E, e2eIsSafe, e2eOpenFile };
+// E2E 모드에서만 "저장 창" 대신 이 절대 경로에 저장한다 (저장 창은 자동화할 수 없다).
+const e2eSavePath = env => { if (!isE2E(env)) return null; const f = text(env.NABGI_SAVE_FILE); return f && path.isAbsolute(f) ? f : null; };
+
+module.exports = { e2eSavePath, e2eHidden, userDataOverride, isE2E, e2eIsSafe, e2eOpenFile };

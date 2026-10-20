@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld("app", {
   saveState: data => ipcRenderer.invoke("state-save", data),
   clearState: () => ipcRenderer.invoke("state-clear"),
   // 클라우드 저장 (비밀번호는 로그인할 때 한 번 넘기기만 하고, 화면에 토큰·키를 돌려주는 기능은 없다)
+  exportState: () => ipcRenderer.invoke("state-export"),
   cloudStatus: () => ipcRenderer.invoke("cloud-status"),
   cloudConfigure: cfg => ipcRenderer.invoke("cloud-configure", cfg),
   cloudLogin: (email, password) => ipcRenderer.invoke("cloud-login", email, password),
