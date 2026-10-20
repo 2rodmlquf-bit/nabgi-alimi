@@ -13,9 +13,9 @@ const T1 = "2026-10-19T09:00:00.000Z", T2 = "2026-10-19T10:00:00.000Z", T3 = "20
 const noIds = v => JSON.parse(JSON.stringify(v, (k, x) => (k === "id" || k === "createdAt" ? undefined : x)));
 const ent = (date, extra) => ({ date, channel: "메일", status: "지연", due: "2026-09-24", note: "", ...extra });
 
-test("빈 상태: v2 모양이고, 뷰로 바꾸면 예전 빈 저장본(clean(null))과 같다", () => {
+test("빈 상태: v3 모양이고, 뷰로 바꾸면 예전 빈 저장본(clean(null))과 같다", () => {
   const s = Core.emptyState();
-  assert.equal(s.schemaVersion, 2);
+  assert.equal(s.schemaVersion, 3);
   assert.deepEqual(s.informLog, {}); assert.deepEqual(s.quickNotes, {}); assert.deepEqual(s.orderMeta, {});
   assert.deepEqual(Core.toView(s), clean(null));
 });
@@ -130,9 +130,9 @@ const V0_REAL = { edited: {}, reasons: {}, causeOverride: {}, notice: { template
   contactLog: { 가온산업: [{ date: "2026-10-12", kind: "attempt", channel: "메일", promised: "", note: "" }] },
   subst: {}, schedule: {}, soonRules: "필터=3\n그리스=3" };
 
-test("마이그레이션: 실제 저장 파일 모양(v0)이 v2가 되고, 뷰로 바꾸면 내용이 그대로다", () => {
+test("마이그레이션: 실제 저장 파일 모양(v0)이 현재 형식(v3)이 되고, 뷰로 바꾸면 내용이 그대로다", () => {
   const s = Core.migrateV0toV2(V0_REAL, { now: T1, newId: ids });
-  assert.equal(s.schemaVersion, 2);
+  assert.equal(s.schemaVersion, 3);
   assert.deepEqual(noIds(Core.toView(s)), noIds(clean(V0_REAL)));
   assert.deepEqual(s.informLog, {});                                    // 예전 파일에는 안내 기록이 없었다
 });
@@ -154,12 +154,13 @@ test("마이그레이션: 깨진 v0(엉뚱한 타입, 모르는 필드)는 버�
 });
 
 // ---- 버전 판별과 v1 검증 ----
-test("버전 판별: 없으면 v0, 1이면 v1, 2면 v2, 더 크면 미래 버전, 배열·문자열은 잘못된 파일", () => {
+test("버전 판별: 없으면 v0, 1·2·3이면 그 버전, 더 크면 미래 버전, 배열·문자열은 잘못된 파일", () => {
   assert.equal(Core.detectVersion({}), 0);
   assert.equal(Core.detectVersion({ reasons: {} }), 0);
   assert.equal(Core.detectVersion({ schemaVersion: 1 }), 1);
   assert.equal(Core.detectVersion({ schemaVersion: 2 }), 2);
-  assert.equal(Core.detectVersion({ schemaVersion: 3 }), "future");
+  assert.equal(Core.detectVersion({ schemaVersion: 3 }), 3);
+  assert.equal(Core.detectVersion({ schemaVersion: 4 }), "future");
   assert.equal(Core.detectVersion({ schemaVersion: 99 }), "future");
   ["x", 3, null, [], undefined].forEach(v => assert.equal(Core.detectVersion(v), "invalid", String(v)));
   assert.equal(Core.detectVersion({ schemaVersion: "1" }), "invalid");

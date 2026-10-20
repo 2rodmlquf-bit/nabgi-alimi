@@ -186,4 +186,28 @@ for (const f of factories) {
     assert.equal(r.view.informed.A.length, 2);
     if (r.state) assert.equal(r.state.informLog.A.filter(e => e.deletedAt).length, 0);
   });
+
+  t("v2 파일(0.6.0이 쓰던 형식): v3로 바꾸고 알려 주며, 기록을 잃지 않고, 회신 목록이 빈 채로 생긴다", async ({ store, reopen, seed }) => {
+    const v2 = JSON.stringify({ schemaVersion: 2, savedAt: "2026-10-19T09:00:00.000Z",
+      informLog: { A: [{ id: "i1", date: "2026-10-10", channel: "메일", status: "지연", due: "", note: "전화", createdAt: "2026-10-10T01:00:00.000Z" }] },
+      quickNotes: {}, orderMeta: { A: { reason: "통관", updatedAt: "2026-10-10T00:00:00.000Z" } }, settings: { notice: null, soonRules: null, updatedAt: "" },
+      contactLog: {}, contactMarks: { 가온산업: { date: "2026-10-12", updatedAt: "2026-10-12T00:00:00.000Z" } }, substChecks: {}, scheduleEntries: {}, cloudLink: { enabled: false, project: "", ownerUserId: "", linkedAt: "", lastSyncedAt: "" } });
+    seed(v2);
+    const r = await store.load();
+    assert.equal(r.notices.length, 1); assert.equal(r.notices[0].code, "migrated");
+    assert.equal(r.view.informed.A[0].id, "i1"); assert.equal(r.view.reasons.A, "통관"); assert.equal(r.view.contacted.가온산업, "2026-10-12");
+    assert.deepEqual(r.view.replies, {});
+    const again = await reopen().load();
+    assert.deepEqual(again.notices, []); assert.deepEqual(again.view, r.view);                      // 다시 열면 알림 없음, 같은 내용
+  });
+
+  t("회신(공급사 약속일)을 저장하고 다시 열어도 같다. 지우면 보이지 않는다", async ({ store, reopen }) => {
+    await store.save({ ...clean(null), replies: { A: [{ date: "2026-10-10", promised: "2026-10-30", channel: "전화", note: "다음 주", source: "manual", supplier: "가온산업" }] } });
+    const v = (await store.load()).view;
+    assert.equal(v.replies.A[0].promised, "2026-10-30"); assert.ok(v.replies.A[0].id);
+    assert.deepEqual((await reopen().load()).view, v);                                               // 껐다 켜도 id까지 같다
+    delete v.replies.A;
+    const s2 = reopen(); await s2.load(); await s2.save(v);
+    assert.deepEqual((await reopen().load()).view.replies, {});
+  });
 }

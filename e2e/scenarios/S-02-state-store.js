@@ -29,9 +29,9 @@ module.exports = {
     const original = JSON.stringify(V0);
     fs.writeFileSync(path.join(dir1, "state.json"), original, "utf8");
     let app = await ctx.launch({ userData: dir1 });
-    const note1 = await app.waitFor(async () => { const t = await info(app); return /새 형식(\(v2\))?으로 바꿨어요/.test(t) ? t : null; }, 5000);
+    const note1 = await app.waitFor(async () => { const t = await info(app); return /새 형식(\(v\d\))?으로 바꿨어요/.test(t) ? t : null; }, 5000);
     ctx.check("앱을 열면 예전 저장 파일을 새 형식으로 바꿨다고 화면에 알려 준다 (백업 파일 이름 포함)", !!note1 && /state\.v0\.bak\.json/.test(note1), note1 || (await info(app)));
-    ctx.check("디스크: 백업은 예전 파일과 똑같고, state.json은 v2이며, 임시 파일은 남지 않는다", fs.readFileSync(path.join(dir1, "state.v0.bak.json"), "utf8") === original && readJson(path.join(dir1, "state.json")).schemaVersion === 2 && !fs.existsSync(path.join(dir1, "state.json.tmp")));
+    ctx.check("디스크: 백업은 예전 파일과 똑같고, state.json은 v3이며, 임시 파일은 남지 않는다", fs.readFileSync(path.join(dir1, "state.v0.bak.json"), "utf8") === original && readJson(path.join(dir1, "state.json")).schemaVersion === 3 && !fs.existsSync(path.join(dir1, "state.json.tmp")));
     const v1 = readJson(path.join(dir1, "state.json"));
     const e0 = (v1.informLog["PO-2026-1001"] || [])[0] || {};
     ctx.check("예전 안내 기록이 id·만든 시각이 붙어 새 형식에 들어갔다 (내용은 그대로)", e0.channel === "전화" && e0.note === "E2E 전화 설명" && e0.status === "지연" && !!e0.id && e0.createdAt === "2026-10-12T12:00:00.000Z", JSON.stringify(e0));
@@ -53,7 +53,7 @@ module.exports = {
     app = await ctx.launch({ userData: dir1 });
     await app.click("#sampleBtn"); await rowsReady(app);
     ctx.check("앱을 다시 켜도 취소한 기록은 보이지 않는다 (삭제 표시가 복원 때 살아나지 않는다)", (await badge1(app)) === "미안내");
-    ctx.check("두 번째 실행에서는 '새 형식' 알림이 다시 뜨지 않는다 (이전은 한 번만)", !/새 형식(\(v2\))?으로 바꿨어요/.test(await info(app)), await info(app));
+    ctx.check("두 번째 실행에서는 '새 형식' 알림이 다시 뜨지 않는다 (이전은 한 번만)", !/새 형식(\(v\d\))?으로 바꿨어요/.test(await info(app)), await info(app));
     ctx.check("백업은 처음 그대로이고 다른 백업 파일이 늘지 않았다", fs.readdirSync(dir1).filter(n => /^state\.v0\.bak/.test(n)).length === 1 && fs.readFileSync(path.join(dir1, "state.v0.bak.json"), "utf8") === original);
     await app.close();
 
@@ -69,12 +69,12 @@ module.exports = {
     await app.click("#tbody tr"); await app.sleep(250);
     await app.clickText("#detail button", "안내함으로 기록");
     const fresh = await app.waitFor(() => { try { const j = readJson(path.join(dir2, "state.json")); return j && j.informLog && Object.keys(j.informLog).length >= 1 ? j : null; } catch (e) { return null; } }, 12000);   // 기록이 들어간 파일을 기다린다 (먼저 쓰인 빈 파일을 읽고 실패하던 경쟁 상태를 없앰)
-    ctx.check("그 뒤에는 평소처럼 쓸 수 있다: 안내 기록이 새 v2 파일에 저장된다", !!fresh && fresh.schemaVersion === 2 && Object.keys(fresh.informLog).length === 1);
+    ctx.check("그 뒤에는 평소처럼 쓸 수 있다: 안내 기록이 새 v3 파일에 저장된다", !!fresh && fresh.schemaVersion === 3 && Object.keys(fresh.informLog).length === 1);
     await app.close();
 
     // ---------- 4. 이 앱보다 새로운 버전의 파일 ----------
     const dir3 = newDir();
-    const future = JSON.stringify({ schemaVersion: 3, 새로운: "필드" });
+    const future = JSON.stringify({ schemaVersion: 4, 새로운: "필드" });
     fs.writeFileSync(path.join(dir3, "state.json"), future, "utf8");
     app = await ctx.launch({ userData: dir3 });
     const note3 = await app.waitFor(async () => { const t = await info(app); return /새로운 버전/.test(t) ? t : null; }, 5000);

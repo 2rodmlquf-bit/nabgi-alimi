@@ -1,7 +1,7 @@
 // 저장된 기록을 새로 연 목록에 다시 적용하고, 현재 상태를 저장본에 합치는 순수 함수.
 // 저장하는 것: edited(이메일로 바꾼 납기 {from,to}), reasons(사유), causeOverride(직접 지정한 원인), notice(템플릿 선택)
 (function (root) {
-  const empty = () => ({ edited: {}, reasons: {}, causeOverride: {}, notice: null, contacted: {}, contactLog: {}, informed: {}, quickNotes: {}, subst: {}, schedule: {}, soonRules: null });
+  const empty = () => ({ edited: {}, reasons: {}, causeOverride: {}, notice: null, contacted: {}, contactLog: {}, informed: {}, quickNotes: {}, replies: {}, subst: {}, schedule: {}, soonRules: null });
   const CHANNELS = ["메일", "카톡·문자", "전화", "구두", "기타"];
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
   const SUBST_STATES = ["의심", "확인요청중", "승인", "거절"];
@@ -63,6 +63,15 @@
         if (ok.length) s.quickNotes[no] = capped ? ok.slice(-50) : ok;
       });
     }
+    // 공급사 회신(주문별): [{ date, promised, channel, note, source, supplier, id?, createdAt? }] (주문당 최근 20건까지, ADR-0007)
+    if (saved.replies && typeof saved.replies === "object" && !Array.isArray(saved.replies)) {
+      Object.entries(saved.replies).forEach(([no, arr]) => {
+        if (!Array.isArray(arr)) return;
+        const ok = arr.filter(e => e && ISO.test(e.date || ""))
+          .map(e => ({ date: e.date, promised: ISO.test(e.promised || "") ? e.promised : "", channel: CHANNELS.includes(e.channel) ? e.channel : "기타", note: String(e.note || "").slice(0, 200), source: e.source === "email" ? "email" : "manual", supplier: String(e.supplier || "").slice(0, 100), ...idc(e) }));
+        if (ok.length) s.replies[no] = capped ? ok.slice(-20) : ok;
+      });
+    }
     if (typeof saved.soonRules === "string") s.soonRules = saved.soonRules.slice(0, 2000);
     if (Number.isInteger(saved.reAlertDays) && saved.reAlertDays >= 1 && saved.reAlertDays <= 30) s.reAlertDays = saved.reAlertDays;   // 다시 안내 기준 일수 (FR-18). 없으면 기본 7일
     if (saved.notice && typeof saved.notice === "object") s.notice = { template: String(saved.notice.template || ""), alt: String(saved.notice.alt || ""), signature: String(saved.notice.signature || "") };
@@ -94,6 +103,10 @@
       Object.keys(out[k]).forEach(no => { if (here.has(no)) delete out[k][no]; });
       Object.entries(current[k] || {}).forEach(([no, v]) => { if (here.has(no)) out[k][no] = v; });
     });
+    if (current.replies) {                                                                                      // 화면이 회신을 들고 있을 때만 (들고 있지 않으면 저장된 회신을 그대로 둔다)
+      Object.keys(out.replies).forEach(no => { if (here.has(no)) delete out.replies[no]; });
+      Object.entries(current.replies).forEach(([no, v]) => { if (here.has(no)) out.replies[no] = v; });
+    }
     out.notice = current.notice || out.notice;
     if (typeof current.soonRules === "string") out.soonRules = current.soonRules.slice(0, 2000); // 품목별 임박 기준은 주문과 무관하게 현재 값이 전부다
     const days = clean({ reAlertDays: current.reAlertDays }).reAlertDays;                         // 다시 안내 기준도 현재 값이 전부다 (기본값으로 되돌리면 지워진다)

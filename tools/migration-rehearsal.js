@@ -26,7 +26,7 @@ const sizes = v => Object.fromEntries(["edited", "reasons", "causeOverride", "co
   check("저장소: 예전 형식을 새 형식으로 바꿨다고 알린다", r.notices.length === 1 && r.notices[0].code === "migrated");
   check("저장소: 내용이 하나도 빠지지 않았다 (id·만든 시각을 빼고 같다)", JSON.stringify(strip(r.view)) === JSON.stringify(strip(oldView)), JSON.stringify(sizes(r.view)));
   check("저장소: 백업이 원본과 똑같다", fs.readFileSync(path.join(dir1, "state.v0.bak.json"), "utf8") === original);
-  check("저장소: 새 파일은 v2다", JSON.parse(fs.readFileSync(path.join(dir1, "state.json"), "utf8")).schemaVersion === 2);
+  check("저장소: 새 파일은 v3다", JSON.parse(fs.readFileSync(path.join(dir1, "state.json"), "utf8")).schemaVersion === 3);
   const again = await new LocalFileStore({ dir: dir1 }).load();
   check("저장소: 다시 열면 알림이 없고 내용(id 포함)이 같다 (여러 번 열어도 같은 결과)", again.notices.length === 0 && JSON.stringify(again.view) === JSON.stringify(r.view));
 
@@ -36,7 +36,7 @@ const sizes = v => Object.fromEntries(["edited", "reasons", "causeOverride", "co
   const app = await launchApp({ userData: dir2 });
   try {
     const note = (await app.text("#savedInfo")) || "";
-    check("앱: 화면에 이전 사실을 알려 준다", /새 형식(\(v2\))?으로 바꿨어요/.test(note));
+    check("앱: 화면에 이전 사실을 알려 준다", /새 형식(\(v\d\))?으로 바꿨어요/.test(note));
     const inApp = await app.eval("({ contacted: Object.keys(S.contacted).length, contactLog: Object.keys(S.contactLog).length, informed: Object.keys(S.informed).length, reasons: Object.keys(S.reasons).length, soonRules: (S.soonRules || '').length, template: S.notice.template })");
     check("앱: 공급사 연락 기록·사유·품목별 기준·안내문 선택이 그대로 불러와진다", inApp.contacted === sizes(oldView).contacted && inApp.contactLog === sizes(oldView).contactLog && inApp.reasons === sizes(oldView).reasons && inApp.soonRules === (oldView.soonRules || "").length && inApp.template === (oldView.notice ? oldView.notice.template : "사과형"), JSON.stringify(inApp));
     await app.click("#sampleBtn"); await app.waitFor(async () => (await app.count("#tbody tr")) > 0);

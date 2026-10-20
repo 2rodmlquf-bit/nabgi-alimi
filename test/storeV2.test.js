@@ -17,19 +17,20 @@ const gone = list => (list || []).filter(e => e.deletedAt);
 
 test("빈 상태: v2 모양이다 (legacy 대신 연락 기록·연락함 표시·대체품·분납·cloudLink)", () => {
   const s = Core.emptyState();
-  assert.equal(s.schemaVersion, 2);
+  assert.equal(s.schemaVersion, 3);
   ["informLog", "quickNotes", "orderMeta", "contactLog", "contactMarks", "substChecks", "scheduleEntries"].forEach(k => assert.deepEqual(s[k], {}, k));
   assert.equal("legacy" in s, false);
   assert.deepEqual(s.cloudLink, { enabled: false, project: "", ownerUserId: "", linkedAt: "", lastSyncedAt: "" });
   assert.deepEqual(Core.toView(s), clean(null));                               // 화면이 보는 빈 뷰는 예전과 같다
 });
 
-test("버전 판별: 없으면 v0, 1, 2, 3 이상은 미래 버전, 모양이 아니면 잘못된 파일", () => {
-  assert.equal(Core.SCHEMA_VERSION, 2);
+test("버전 판별: 없으면 v0, 1·2·3, 4 이상은 미래 버전, 모양이 아니면 잘못된 파일", () => {
+  assert.equal(Core.SCHEMA_VERSION, 3);
   assert.equal(Core.detectVersion({}), 0);
   assert.equal(Core.detectVersion({ schemaVersion: 1 }), 1);
   assert.equal(Core.detectVersion({ schemaVersion: 2 }), 2);
-  assert.equal(Core.detectVersion({ schemaVersion: 3 }), "future");
+  assert.equal(Core.detectVersion({ schemaVersion: 3 }), 3);
+  assert.equal(Core.detectVersion({ schemaVersion: 4 }), "future");
   assert.equal(Core.detectVersion({ schemaVersion: 99 }), "future");
   ["1", 0, -1, 1.5, null].forEach(v => assert.equal(Core.detectVersion({ schemaVersion: v }), "invalid", String(v)));
   assert.equal(Core.detectVersion([]), "invalid");
@@ -242,7 +243,7 @@ const V1 = {
 
 test("v1 → v2: 안내 기록·메모·주문 메타·설정이 그대로 이어지고, id는 유지되고, 예전 삭제 표시는 이유 'user'가 된다", () => {
   const s = Core.migrateV1toV2(V1, { now: T3, newId: ids });
-  assert.equal(s.schemaVersion, 2);
+  assert.equal(s.schemaVersion, 3);
   assert.deepEqual(s.informLog.A.map(e => e.id), ["i1", "i2"]);
   assert.equal(s.informLog.A[0].createdAt, "2026-10-10T12:00:00.000Z");
   assert.equal(s.informLog.A[0].deletedReason, undefined);
@@ -291,7 +292,7 @@ test("v0 → v2: 예전(v0) 파일도 한 번에 v2가 되고, legacy 기록에 
     contactLog: { 가온산업: [{ date: "2026-10-12", kind: "attempt", channel: "메일", promised: "", note: "문의" }] }, subst: {}, schedule: {}, soonRules: "필터=3",
     informed: { A: [{ date: "2026-10-10", channel: "메일", status: "지연", due: "2026-09-24", note: "" }] } };
   const s = Core.migrateV0toV2(v0, { now: T3, newId: ids });
-  assert.equal(s.schemaVersion, 2);
+  assert.equal(s.schemaVersion, 3);
   assert.equal(s.informLog.A[0].createdAt, "2026-10-10T12:00:00.000Z");
   assert.ok(s.contactLog.가온산업[0].id);
   assert.equal(s.contactLog.가온산업[0].createdAt, "2026-10-12T12:00:00.000Z");

@@ -6,7 +6,7 @@ function buildExport(state, now = new Date().toISOString()) {
   const s = Core.normalizeState(state);
   const { cloudLink, ...records } = s;
   const counts = {};
-  for (const k of ["informLog", "quickNotes", "contactLog", "substChecks", "scheduleEntries"]) counts[k] = Object.values(records[k]).flat().filter(e => !e.deletedAt).length;
+  for (const k of ["informLog", "quickNotes", "contactLog", "substChecks", "scheduleEntries", "orderReplies"]) counts[k] = Object.values(records[k]).flat().filter(e => !e.deletedAt).length;
   counts.orderMeta = Object.keys(records.orderMeta).length;
   counts.contactMarks = Object.keys(records.contactMarks).length;
   return { app: "납기 알리미", format: "nabgi-export", exportedAt: now, counts, data: records };
