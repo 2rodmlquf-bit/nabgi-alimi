@@ -10,7 +10,8 @@
 | 만든 계정 | 2rodmlquf@naver.com 의 Supabase 조직 (Supabase 연결이 이 계정으로 바뀐 상태에서 생성) |
 | 표 | 8개 (`inform_logs`, `quick_notes`, `substitute_checks`, `schedule_entries`, `supplier_contact_logs`, `order_meta`, `supplier_contact_marks`, `user_settings`), 모두 RLS 켜짐, 행 0개 |
 | 보안 점검 | Supabase 보안 점검(advisors) **문제 0건** |
-| 아직 안 한 것 | 앱 연결 코드, 로그인 계정 만들기, 가입 닫기·이메일 확인 끄기(화면에서 직접), 로컬 저장 형식 v2 |
+| QA | 자동 시험 47/47, 직접 해 볼 수 있는 QA 화면과 시험 데이터 있음 → `qa/README.md` |
+| 아직 안 한 것 | 앱 연결 코드, 실제 로그인 계정 만들기, 가입 닫기·이메일 확인 끄기(화면에서 직접), 로컬 저장 형식 v2 |
 
 프로젝트 주소(URL)와 키는 이 저장소에 적지 않는다(코드가 아닌 설정으로 받는다, ADR-0003·0005). `service_role` 키는 앱·저장소 어디에도 넣지 않는다.
 
