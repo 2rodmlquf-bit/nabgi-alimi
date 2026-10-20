@@ -1,6 +1,6 @@
 {
   "name": "delivery-watch",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "납기 임박·지연 주문만 보여 주는 예외 목록 앱",
   "author": "delivery-watch",
   "main": "main.js",
@@ -15,9 +15,26 @@
     "appId": "local.deliverywatch.app",
     "productName": "납기 알리미",
     "artifactName": "DeliveryWatch-Setup-${version}.exe",
-    "directories": { "output": "dist" },
-    "files": ["main.js", "preload.js", "src/**/*", "renderer/**/*", "build/icon.png", "샘플주문.csv", "샘플주문.xlsx", "샘플메일/**/*", "샘플공급사/**/*", "package.json"],
-    "win": { "target": "nsis", "icon": "build/icon.png", "signExecutable": false },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "renderer/**/*",
+      "build/icon.png",
+      "샘플주문.csv",
+      "샘플주문.xlsx",
+      "샘플메일/**/*",
+      "샘플공급사/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png",
+      "signExecutable": false
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
