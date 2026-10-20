@@ -34,7 +34,8 @@
       <button id="emailBtn">이메일 납기 추출</button>
     </div>
     <div class="tabs" id="mainTabs" role="tablist" aria-label="화면 선택" hidden>
-      <button id="tabList" class="tabbtn on" role="tab" aria-selected="true">예외 목록</button>
+      <button id="tabHome" class="tabbtn on" role="tab" aria-selected="true">홈</button>
+      <button id="tabList" class="tabbtn" role="tab" aria-selected="false">예외 목록</button>
       <button id="tabContact" class="tabbtn" role="tab" aria-selected="false">오늘 연락할 곳</button>
       <button id="tabAna" class="tabbtn" role="tab" aria-selected="false">지연 분석</button>
       <button id="tabReport" class="tabbtn" role="tab" aria-selected="false">보고서</button>
@@ -218,9 +219,9 @@
   <h2>아직 불러온 파일이 없어요</h2>
   <p class="sub">납기가 임박했거나 지연된 주문만 골라서 보여 드려요.</p>
   <ol class="steps">
-    <li><b>샘플 불러오기</b>로 가상 주문 38건을 열어 보세요.</li>
-    <li><b>이메일 납기 추출</b>에서 샘플 이메일의 납기를 읽어 보세요.</li>
-    <li><b>지연 분석</b> 탭에서 원인·공급사·연구원별로 확인하세요.</li>
+    <li><b>목록 열기</b>로 주문 엑셀·CSV를 열어요. 연습은 <b>샘플 불러오기</b>(가상 주문 38건)로 해 보세요.</li>
+    <li><b>홈</b>에서 오늘 할 일(안내할 것, 회신 늦음, 연락할 곳)을 보고, <b>예외 목록</b>에서 주문을 눌러 보세요.</li>
+    <li><b>안내함으로 기록</b>을 남기면 다시 안내할 때와 공급사 약속일이 지났을 때 앱이 먼저 알려 줘요.</li>
   </ol>
 </section>
 
@@ -234,6 +235,7 @@
     <div class="card warn"><span>확인 필요</span><b id="nCheck">0</b></div>
   </div>
   <div id="notice" class="notice" hidden></div>
+  <section id="homeView" data-screen-id="HM-11-T" hidden></section>
   <section id="analysis" data-screen-id="AN-11-T" hidden></section>
   <section id="contactView" data-screen-id="CT-11-T" hidden></section>
   <section id="reportView" data-screen-id="RP-11-T" hidden></section>
@@ -269,6 +271,7 @@
 <script src="../src/columns.js"></script>
 <script src="../src/duplicates.js"></script>
 <script src="../src/replies.js"></script>
+<script src="../src/home.js"></script>
 <script src="../src/mailfilter.js"></script>
 <script src="../src/supplier.js"></script>
 <script src="../src/reask.js"></script>

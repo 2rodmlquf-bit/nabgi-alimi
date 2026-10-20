@@ -39,7 +39,7 @@ const sizes = v => Object.fromEntries(["edited", "reasons", "causeOverride", "co
     check("앱: 화면에 이전 사실을 알려 준다", /새 형식(\(v\d\))?으로 바꿨어요/.test(note));
     const inApp = await app.eval("({ contacted: Object.keys(S.contacted).length, contactLog: Object.keys(S.contactLog).length, informed: Object.keys(S.informed).length, reasons: Object.keys(S.reasons).length, soonRules: (S.soonRules || '').length, template: S.notice.template })");
     check("앱: 공급사 연락 기록·사유·품목별 기준·안내문 선택이 그대로 불러와진다", inApp.contacted === sizes(oldView).contacted && inApp.contactLog === sizes(oldView).contactLog && inApp.reasons === sizes(oldView).reasons && inApp.soonRules === (oldView.soonRules || "").length && inApp.template === (oldView.notice ? oldView.notice.template : "사과형"), JSON.stringify(inApp));
-    await app.click("#sampleBtn"); await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
+    await app.click("#sampleBtn"); await app.showList(); await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     await app.click("#tabContact"); await app.sleep(400);
     const contactText = (await app.text("#contactView")) || "";
     check("앱: '오늘 연락할 곳' 탭이 오류 없이 열린다", contactText.length > 0);

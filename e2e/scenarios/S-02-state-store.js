@@ -37,7 +37,7 @@ module.exports = {
     ctx.check("예전 안내 기록이 id·만든 시각이 붙어 새 형식에 들어갔다 (내용은 그대로)", e0.channel === "전화" && e0.note === "E2E 전화 설명" && e0.status === "지연" && !!e0.id && e0.createdAt === "2026-10-12T12:00:00.000Z", JSON.stringify(e0));
     ctx.check("사유·안내문 선택·서명·공급사 연락 기록도 잃지 않았다", v1.orderMeta["PO-2026-1002"].reason === "E2E 사유: 통관 서류 보완" && v1.settings.notice.signature === "E2E서명" && v1.settings.soonRules === "필터=3\n그리스=3" && Object.keys(v1.contactMarks).length === 2 && v1.contactLog["가온산업"].length === 1);
 
-    await app.click("#sampleBtn"); await rowsReady(app);
+    await app.click("#sampleBtn"); await app.showList(); await rowsReady(app);
     ctx.check("화면에서도 예전 안내 기록이 보인다: 첫 주문이 '안내 10-12'", (await badge1(app)) === "안내 10-12", await badge1(app));
     await app.click("#tbody tr:nth-child(2)"); await app.sleep(300);
     ctx.check("화면에서도 예전 사유가 보인다 (PO-2026-1002)", /E2E 사유: 통관 서류 보완/.test((await app.text("#detail")) || ""));
@@ -51,7 +51,7 @@ module.exports = {
 
     await app.close();
     app = await ctx.launch({ userData: dir1 });
-    await app.click("#sampleBtn"); await rowsReady(app);
+    await app.click("#sampleBtn"); await app.showList(); await rowsReady(app);
     ctx.check("앱을 다시 켜도 취소한 기록은 보이지 않는다 (삭제 표시가 복원 때 살아나지 않는다)", (await badge1(app)) === "미안내");
     ctx.check("두 번째 실행에서는 '새 형식' 알림이 다시 뜨지 않는다 (이전은 한 번만)", !/새 형식(\(v\d\))?으로 바꿨어요/.test(await info(app)), await info(app));
     ctx.check("백업은 처음 그대로이고 다른 백업 파일이 늘지 않았다", fs.readdirSync(dir1).filter(n => /^state\.v0\.bak/.test(n)).length === 1 && fs.readFileSync(path.join(dir1, "state.v0.bak.json"), "utf8") === original);
@@ -65,7 +65,7 @@ module.exports = {
     ctx.check("손상된 저장 파일이면 새로 시작했다고, 손상 파일은 보관했다고 화면에 알려 준다", !!note2 && /그대로 보관했어요: state\.corrupt-/.test(note2), note2 || "");
     const kept = fs.readdirSync(dir2).filter(n => /^state\.corrupt-.*\.json$/.test(n));
     ctx.check("손상 파일은 지워지지 않고 내용 그대로 보관된다", kept.length === 1 && fs.readFileSync(path.join(dir2, kept[0]), "utf8") === '{ "informed": ');
-    await app.click("#sampleBtn"); await rowsReady(app);
+    await app.click("#sampleBtn"); await app.showList(); await rowsReady(app);
     await app.click("#tbody tr"); await app.sleep(250);
     await app.clickText("#detail button", "안내함으로 기록");
     const fresh = await app.waitFor(() => { try { const j = readJson(path.join(dir2, "state.json")); return j && j.informLog && Object.keys(j.informLog).length >= 1 ? j : null; } catch (e) { return null; } }, 12000);   // 기록이 들어간 파일을 기다린다 (먼저 쓰인 빈 파일을 읽고 실패하던 경쟁 상태를 없앰)
@@ -79,7 +79,7 @@ module.exports = {
     app = await ctx.launch({ userData: dir3 });
     const note3 = await app.waitFor(async () => { const t = await info(app); return /새로운 버전/.test(t) ? t : null; }, 5000);
     ctx.check("더 새로운 버전의 파일이면 읽기만 한다고 화면에 알려 준다", !!note3 && /저장하지 않고 읽기만 해요/.test(note3), note3 || "");
-    await app.click("#sampleBtn"); await rowsReady(app);
+    await app.click("#sampleBtn"); await app.showList(); await rowsReady(app);
     await app.click("#tbody tr"); await app.sleep(250);
     await app.clickText("#detail button", "안내함으로 기록");
     const err = await app.waitFor(async () => { const t = await info(app); return /저장하지 않았어요/.test(t) ? t : null; }, 5000);

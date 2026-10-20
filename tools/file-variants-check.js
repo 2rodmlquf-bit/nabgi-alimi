@@ -34,7 +34,7 @@ fs.writeFileSync(C, ["비고,무관한열1,납기일,무관한열2,요청자,공
     console.log("\n== " + name);
     const app = await launchApp({ openFile: file });
     try {
-      await app.click("#openBtn");
+      await app.click("#openBtn"); await app.showList();
       await app.waitFor(async () => (await app.eval("S.rows ? S.rows.length : 0")) > 0, 8000);
       const info = await app.eval("({ rows: S.rows.length, m: S.mapping, text: document.body.innerText, note: document.getElementById('fileNote').innerText })");
       check("행 수가 맞게 읽힌다", info.rows === expect.rows, info.rows + "행");

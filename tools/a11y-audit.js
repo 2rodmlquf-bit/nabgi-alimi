@@ -7,7 +7,7 @@ const BANNED = ["재안내", "확인필요", "안내완료"];
 (async () => {
   const app = await launchApp();
   try {
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     await app.setValue("#today", "2026-10-20"); await app.sleep(300);
     await app.click("#tbody tr"); await app.sleep(300);

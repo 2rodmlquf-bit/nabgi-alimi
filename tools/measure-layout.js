@@ -6,7 +6,7 @@ const { measureAt } = require("../e2e/layoutMetrics");
 (async () => {
   const app = await launchApp();
   try {
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     for (const [w, h] of [[1280, 820], [900, 600]]) console.log(JSON.stringify(await measureAt(app, w, h)));
   } finally { await app.close(); }

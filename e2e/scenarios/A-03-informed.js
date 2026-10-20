@@ -5,7 +5,7 @@ module.exports = {
   name: "감사: 안내 추적 (FR-08~11)",
   run: async ctx => {
     const app = await ctx.launch();
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     const badge = (row = 1) => app.text(`#tbody tr:nth-child(${row}) td:nth-child(4)`).then(t => (t || "").trim());
     const bar = () => app.text("#informBar").then(t => (t || "").replace(/\s+/g, " "));

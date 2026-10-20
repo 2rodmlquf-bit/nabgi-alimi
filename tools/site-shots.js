@@ -16,7 +16,7 @@ const OUT = path.join(ROOT, "site", "img");
   const app = await launchApp();
   try {
     await app.viewport(1280, 820);
-    await app.click("#sampleBtn"); await app.waitFor(async () => (await app.count("#tbody tr")) > 0); await app.sleep(500);
+    await app.click("#sampleBtn"); await app.showList(); await app.waitFor(async () => (await app.count("#tbody tr")) > 0); await app.sleep(500);
     await app.screenshot(OUT + "/01-list.png");
     await app.click("#tbody tr:nth-child(2)"); await app.sleep(500);
     await app.screenshot(OUT + "/02-detail.png");

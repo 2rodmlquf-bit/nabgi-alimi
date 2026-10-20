@@ -8,7 +8,7 @@ module.exports = {
   name: "빠른 메모 (CUJ-3): 찾기 → 적기 → 확인 → 안내 판단",
   run: async ctx => {
     const app = await ctx.launch();
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     const NO = "PO-2026-1002";
     const BOX = '#detail [data-screen-id="LS-33-A"]', TA = BOX + " textarea";
@@ -77,7 +77,7 @@ module.exports = {
     const dir = app.userData;
     await app.close();
     const app2 = await ctx.launch({ userData: dir });
-    await app2.click("#sampleBtn"); await app2.waitFor(async () => (await app2.count("#tbody tr")) > 0);
+    await app2.click("#sampleBtn"); await app2.showList(); await app2.waitFor(async () => (await app2.count("#tbody tr")) > 0);
     await app2.setValue("#q", "1002", "input"); await app2.sleep(300);
     const c2 = ((await app2.text("#tbody tr:nth-child(1) td:nth-child(4)")) || "").replace(/\s+/g, " ").trim();
     await app2.click("#tbody tr"); await app2.sleep(300);
