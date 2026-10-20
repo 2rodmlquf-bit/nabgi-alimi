@@ -87,15 +87,16 @@ module.exports = {
 
     // ---------- 좁은 창 900x600 (T6.6) ----------
     await app.viewport(900, 600); await app.sleep(400);
-    ctx.check("T6.6 넓은 창에서 숨겨 둔 '목록으로' 단추는 좁은 창에서만 보인다", (await app.eval("(() => { document.querySelector('#tbody tr:nth-child(4)').click(); return true; })()")) && (await app.sleep(500), await app.eval("(() => { const b = document.querySelector('#detail .backtolist'); return !!b && b.offsetParent !== null; })()")));
-    const nr = await app.eval(`(() => { const d = document.getElementById('detail').getBoundingClientRect(); const b = [...document.querySelectorAll('#detail button')].find(x => x.textContent.trim() === '안내함으로 기록'); const br = b.getBoundingClientRect(); const sticky = [...document.querySelectorAll('header, .top, .subbar')].reduce((m, h) => getComputedStyle(h).position === 'sticky' ? Math.max(m, h.getBoundingClientRect().bottom) : m, 0); return { detailTop: Math.round(d.top), sticky: Math.round(sticky), recTop: Math.round(br.top), recBottom: Math.round(br.bottom), vh: innerHeight, scrolled: Math.round(scrollY) }; })()`);
-    ctx.check("T6.6 좁은 창에서 주문을 누르면 상세로 내려가고, 고정 머리에 가려지지 않고 스크롤 없이 '안내함으로 기록'이 화면 안에 보인다 (개선 전 1,773px)", nr.detailTop >= nr.sticky - 2 && nr.detailTop <= nr.sticky + 40 && nr.recTop >= nr.sticky && nr.recBottom <= nr.vh, JSON.stringify(nr));
+    ctx.check("T6.6 주문을 누르면 상세가 창으로 열리고 '닫기' 단추가 보인다", (await app.eval("(() => { document.querySelector('#tbody tr:nth-child(4)').click(); return true; })()")) && (await app.sleep(500), await app.eval("(() => { const b = document.querySelector('#detail .backtolist'); return !!b && b.offsetParent !== null; })()")));
+    const nr = await app.eval(`(() => { const d = document.getElementById('detail').getBoundingClientRect(); const b = [...document.querySelectorAll('#detail button')].find(x => x.textContent.trim() === '안내함으로 기록'); const br = b.getBoundingClientRect(); return { detailTop: Math.round(d.top), detailBottom: Math.round(d.bottom), recTop: Math.round(br.top), recBottom: Math.round(br.bottom), vh: innerHeight, scrolled: Math.round(scrollY) }; })()`);
+    ctx.check("T6.6 900x600에서도 상세 창이 화면 안에 있고, 스크롤 없이 '안내함으로 기록'이 보인다 (개선 전 1,773px)", nr.detailTop >= 0 && nr.detailBottom <= nr.vh && nr.recTop >= nr.detailTop && nr.recBottom <= nr.detailBottom && nr.scrolled === 0, JSON.stringify(nr));
     await app.screenshot(require("path").join(__dirname, "..", "out", "phase6-narrow.png"));
     await app.click("#detail .backtolist"); await app.sleep(400);
-    const back = await app.eval(`(() => { const tr = document.querySelector('#tbody tr.sel'); const r = tr.getBoundingClientRect(); return { focused: document.activeElement === tr, inView: r.top >= 0 && r.bottom <= innerHeight }; })()`);
-    ctx.check("T6.6 '↑ 목록으로'를 누르면 고른 줄로 올라가 포커스를 받는다", back.focused && back.inView, JSON.stringify(back));
+    const back = await app.eval(`(() => { const sel = S.selected; const tr = document.activeElement; const r = tr.getBoundingClientRect(); return { closed: sel === null && document.getElementById('detail').offsetParent === null, focused: tr.tagName === 'TR', inView: r.top >= 0 && r.bottom <= innerHeight }; })()`);
+    ctx.check("T6.6 '닫기'를 누르면 창이 닫히고 보던 줄이 포커스를 받는다", back.closed && back.focused && back.inView, JSON.stringify(back));
+    await app.click("#tbody tr:nth-child(4)"); await app.sleep(300); await app.press("Escape"); await app.sleep(300);
+    ctx.check("T6.6 Esc로도 상세 창이 닫힌다", await app.eval("S.selected === null && document.getElementById('detail').offsetParent === null"));
     await app.viewport(1280, 820); await app.sleep(300);
-    ctx.check("T6.6 넓은 창으로 돌아오면 '목록으로' 단추는 다시 숨는다", (await app.eval("(() => { const b = document.querySelector('#detail .backtolist'); return !b || b.offsetParent === null; })()")) === true);
 
     // ---------- 글자 대비: 라이트·다크 (T6.7) ----------
     // 색이 바뀌는 애니메이션(transition)은 창이 가려져 있으면 멈춰 있을 수 있다. colorScheme 도우미가 '동작 줄이기'도 함께 켜서 끝난 색을 잰다.
