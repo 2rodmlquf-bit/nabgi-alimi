@@ -20,9 +20,9 @@
 const { randomUUID } = require("crypto");
 const P = require("../persist");
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 const MAX_LIVE = 50;            // 주문당 살아 있는 안내 기록·빠른 메모 (예전과 같은 제한)
-const CAPS = { informLog: 50, quickNotes: 50, contactLog: 200, substChecks: 20, scheduleEntries: 20 };   // 목록마다 살아 있는 기록 상한
+const CAPS = { informLog: 50, quickNotes: 50, contactLog: 200, substChecks: 20, scheduleEntries: 20, orderReplies: 20 };   // 목록마다 살아 있는 기록 상한
 const MAX_TOMBSTONES = 100;     // 목록마다 삭제 표시 보관 수
 const MAX_CHARS = 2000000;      // 저장 글자 수 상한 (예전과 같은 제한)
 const CHANNELS = ["메일", "카톡·문자", "전화", "구두", "기타"];
@@ -41,6 +41,7 @@ const emptyState = () => ({
   schemaVersion: SCHEMA_VERSION, savedAt: "", informLog: {}, quickNotes: {}, orderMeta: {},
   settings: { notice: null, soonRules: null, updatedAt: "" },
   contactLog: {}, contactMarks: {}, substChecks: {}, scheduleEntries: {},
+  orderReplies: {},                                  // v3: 공급사 회신·약속일 (주문 단위, ADR-0007)
   cloudLink: emptyLink(),
 });
 
@@ -98,6 +99,10 @@ function normalizeSched(e) {
   if (!idOk(e) || !ISO_DATE.test(e.date || "")) return null;
   return tomb(e, { id: str(e.id, 64), date: e.date, qty: str(e.qty, 20), createdAt: str(e.createdAt, 40) });
 }
+function normalizeReply(e) {
+  if (!idOk(e) || !ISO_DATE.test(e.date || "")) return null;
+  return tomb(e, { id: str(e.id, 64), date: e.date, promised: ISO_DATE.test(e.promised || "") ? e.promised : "", channel: CHANNELS.includes(e.channel) ? e.channel : "기타", note: str(e.note, 200), source: e.source === "email" ? "email" : "manual", supplier: str(e.supplier, 100), createdAt: str(e.createdAt, 40) });
+}
 function normalizeLink(l) {
   const base = emptyLink();
   if (!plain(l)) return base;
@@ -123,6 +128,7 @@ function normalizeState(obj) {
   s.contactLog = lists(obj.contactLog, normalizeContact, CAPS.contactLog);
   s.substChecks = lists(obj.substChecks, normalizeSubst, CAPS.substChecks);
   s.scheduleEntries = lists(obj.scheduleEntries, normalizeSched, CAPS.scheduleEntries);
+  s.orderReplies = lists(obj.orderReplies, normalizeReply, CAPS.orderReplies);
   if (plain(obj.contactMarks)) Object.entries(obj.contactMarks).forEach(([sup, m]) => {
     if (plain(m) && ISO_DATE.test(m.date || "")) s.contactMarks[sup] = { date: m.date, updatedAt: str(m.updatedAt, 40) };
   });
@@ -162,6 +168,10 @@ function toView(state) {
   Object.entries(st.contactLog).forEach(([sup, list]) => {
     const live = liveOf(list).map(e => ({ id: e.id, date: e.date, kind: e.kind, channel: e.channel, promised: e.promised, note: e.note, createdAt: e.createdAt }));
     if (live.length) v.contactLog[sup] = live;
+  });
+  Object.entries(st.orderReplies).forEach(([no, list]) => {
+    const live = liveOf(list).map(e => ({ id: e.id, date: e.date, promised: e.promised, channel: e.channel, note: e.note, source: e.source, supplier: e.supplier, createdAt: e.createdAt }));
+    if (live.length) v.replies[no] = live;
   });
   Object.entries(st.contactMarks).forEach(([sup, m]) => { v.contacted[sup] = m.date; });
   Object.entries(st.substChecks).forEach(([no, list]) => {
@@ -205,6 +215,7 @@ const buildInform = v => ({ date: v.date, channel: v.channel, status: v.status, 
 const buildNote = v => ({ text: v.text });
 const buildContact = v => ({ date: v.date, kind: v.kind, channel: v.channel, promised: v.promised, note: v.note });
 const buildSched = v => ({ date: v.date, qty: v.qty });
+const buildReply = v => ({ date: v.date, promised: v.promised || "", channel: v.channel, note: v.note, source: v.source || "manual", supplier: v.supplier || "" });
 const buildSubst = v => ({ state: v.state, note: v.note, supItem: v.supItem, supSpec: v.supSpec, supQty: v.supQty, source: v.source, date: v.date });
 
 const metaKey = m => JSON.stringify([m.reason || "", m.causeOverride || "", m.edited ? [m.edited.from, m.edited.to] : null]);
@@ -229,6 +240,7 @@ function fromView(rawView, prevState, opts = {}) {
   merge("quickNotes", view.quickNotes, buildNote);
   merge("contactLog", view.contactLog, buildContact);
   merge("scheduleEntries", view.schedule, buildSched);
+  merge("orderReplies", view.replies, buildReply);
 
   // 대체품 확인: 값이 바뀔 때마다 새 행(이력). 뷰에서 빠지면 그 주문의 살아 있는 행을 모두 삭제 표시한다.
   new Set([...Object.keys(prev.substChecks), ...Object.keys(view.subst)]).forEach(no => {
@@ -273,6 +285,9 @@ function migrateV0toV2(raw, opts = {}) {
 
 // v1 저장본을 v2로 바꾼다. 안내 기록·빠른 메모·주문 메타·설정은 같은 모양이라 그대로 잇고(id 유지, 예전 삭제 표시는 이유 "user"),
 // 공급사 연락 기록·연락함 표시·대체품·분납 일정(v1의 legacy)에는 id와 만든 시각(기록한 날짜의 정오, 모르면 저장 시각)을 붙인다.
+// v2 -> v3: 기록은 그대로, 회신 목록(orderReplies)만 빈 채로 더해진다. normalizeState가 새 형식(v3)으로 맞춘다. (멱등)
+function migrateV2toV3(raw) { return normalizeState(raw); }
+
 function migrateV1toV2(raw, opts = {}) {
   const now = opts.now || new Date().toISOString();
   const newId = opts.newId || randomUUID;
@@ -325,4 +340,4 @@ function mergeRestored(localState, remoteState, opts = {}) {
   return { state: normalizeState(s), added, updated };
 }
 
-module.exports = { mergeRestored, SCHEMA_VERSION, MAX_LIVE, CAPS, MAX_TOMBSTONES, MAX_CHARS, WARN_RATIO, emptyState, detectVersion, normalizeState, toView, fromView, migrateV0toV2, migrateV1toV2, exceedsLimit };
+module.exports = { migrateV2toV3, mergeRestored, SCHEMA_VERSION, MAX_LIVE, CAPS, MAX_TOMBSTONES, MAX_CHARS, WARN_RATIO, emptyState, detectVersion, normalizeState, toView, fromView, migrateV0toV2, migrateV1toV2, exceedsLimit };

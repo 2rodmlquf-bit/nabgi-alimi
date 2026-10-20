@@ -6,7 +6,7 @@
 //   clear()     -> { ok, error? }                저장 내용을 모두 지운다
 //   info()      -> { kind, notices, readOnly, ... }
 //
-// 구현체가 채울 것: _read() -> 글자|null, _write(글자), _remove(), _quarantine(글자, 이유) -> 보관한 이름, _backupOld(글자, 예전 버전 0|1) -> 백업 이름, describe()
+// 구현체가 채울 것: _read() -> 글자|null, _write(글자), _remove(), _quarantine(글자, 이유) -> 보관한 이름, _backupOld(글자, 예전 버전 0|1|2) -> 백업 이름, describe()
 //
 // 안전 원칙: 읽을 수 없거나 새 형식으로 바꿀 수 없으면 **빈 상태로 덮어쓰지 않는다.** 읽기 전용으로 열고 이유를 알려 준다.
 const { randomUUID } = require("crypto");
@@ -55,7 +55,8 @@ class BaseStore {
     if (ver === Core.SCHEMA_VERSION) { this._state = Core.normalizeState(obj); this._loaded = true; return; }
 
     // 예전 형식 파일(버전 표시가 없는 v0, 또는 v1): 백업을 먼저 만들고 새 형식(v2)으로 바꾼다. 어느 단계든 실패하면 원본은 그대로 둔다.
-    const migrated = ver === 0 ? Core.migrateV0toV2(obj, { now: this._now(), newId: this._newId }) : Core.migrateV1toV2(obj, { now: this._now(), newId: this._newId });
+    // 어느 버전이든 결과는 현재 형식(v3)이다. v0·v1은 id를 새로 만들어야 해서 now·newId가 필요하다.
+    const migrated = ver === 0 ? Core.migrateV0toV2(obj, { now: this._now(), newId: this._newId }) : ver === 1 ? Core.migrateV1toV2(obj, { now: this._now(), newId: this._newId }) : Core.migrateV2toV3(obj);
     this._state = migrated; this._loaded = true;
     let backupName;
     try { backupName = await this._backupOld(raw, ver); }

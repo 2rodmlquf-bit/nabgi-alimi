@@ -31,7 +31,7 @@ test("저장본 합치기: 현재 목록의 기록은 현재 상태로, 다른 �
 });
 
 test("깨진 저장본은 빈 상태로 읽는다", () => {
-  assert.deepEqual(clean(null), { edited: {}, reasons: {}, causeOverride: {}, notice: null, contacted: {}, contactLog: {}, informed: {}, quickNotes: {}, subst: {}, schedule: {}, soonRules: null });
+  assert.deepEqual(clean(null), { edited: {}, reasons: {}, causeOverride: {}, notice: null, contacted: {}, contactLog: {}, informed: {}, quickNotes: {}, replies: {}, subst: {}, schedule: {}, soonRules: null });
   assert.deepEqual(clean({ edited: [1, 2], reasons: "x" }).edited, {});
   assert.deepEqual(counts({ edited: { A: {} }, causeOverride: { A: "x", B: "y" } }), { edited: 1, causeOverride: 2, reasons: 0 });
 });
