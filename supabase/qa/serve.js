@@ -9,6 +9,7 @@ const ALLOWED = new Set(["index.html", "qa-config.local.js", "qa-users.local.js"
 
 http.createServer((req, res) => {
   const name = decodeURIComponent((req.url || "/").split("?")[0]).replace(/^\/+/, "") || "index.html";
+  if (name === "favicon.ico") { res.writeHead(204); return res.end(); }                       // 브라우저가 자동으로 요청한다. 404가 콘솔 오류로 보이지 않게 빈 응답
   if (!ALLOWED.has(name)) { res.writeHead(404); return res.end("not found"); }
   const file = path.join(__dirname, name);
   if (!fs.existsSync(file)) { res.writeHead(404); return res.end("not found"); }
