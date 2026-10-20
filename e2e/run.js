@@ -1,5 +1,6 @@
 // E2E 실행기. 사용: npm run test:e2e   (또는 node e2e/run.js --only S-00 --keep)
 //   --only <id>  : 그 시나리오만 (여러 번 쓰면 여러 개)
+//   --quiet      : 앱 창을 화면에 띄우지 않는다 (시험 중 깜빡임 없음. 숨기면 S-06(키보드·포커스)과 S-08(실행 중복) 일부가 실패한다. 최종 확인은 --quiet 없이 돌린다)
 //   --keep       : 임시 저장 폴더를 지우지 않는다 (실패 원인 조사용)
 // 시나리오마다 앱을 새로 띄우고(깨끗한 임시 저장 폴더), 끝나면 콘솔 오류 0건인지 확인한다.
 // 전체가 끝나면 실제 사용자 데이터(state.json)가 바뀌지 않았는지도 확인한다.
@@ -9,6 +10,7 @@ const { ROOT, REAL_STATE, launchApp, fingerprint } = require("./helpers");
 const args = process.argv.slice(2);
 const only = args.flatMap((a, i) => (a === "--only" ? [args[i + 1]] : []));
 const keep = args.includes("--keep");
+if (args.includes("--quiet")) process.env.NABGI_E2E_HIDDEN = "1";         // 앱 창을 화면에 띄우지 않는다 (자식 프로세스가 환경변수를 이어받는다)
 const OUT = path.join(__dirname, "out");
 
 const scenarios = fs.readdirSync(path.join(__dirname, "scenarios")).filter(f => f.endsWith(".js")).sort()

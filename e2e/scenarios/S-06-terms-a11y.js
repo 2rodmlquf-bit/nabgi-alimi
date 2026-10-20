@@ -48,7 +48,7 @@ module.exports = {
     ctx.check("T6.5 탭은 tablist/tab이고 지금 탭만 aria-selected=true다", tabs.role === "tablist" && tabs.n === 4 && tabs.sel.length === 1 && tabs.sel[0] === "예외 목록", JSON.stringify(tabs));
     await app.eval("document.getElementById('tabList').focus()"); await app.press("ArrowRight");
     const tabs2 = await app.eval(`[...document.querySelectorAll('#mainTabs [role=tab]')].filter(x => x.getAttribute('aria-selected') === 'true').map(x => x.textContent.trim())`);
-    ctx.check("T6.5 탭에서 오른쪽 화살표로 다음 탭으로 간다", tabs2.length === 1 && tabs2[0] === "지연 분석", tabs2.join());
+    ctx.check("T6.5 탭에서 오른쪽 화살표로 다음 탭으로 간다", tabs2.length === 1 && tabs2[0] === "오늘 연락할 곳", tabs2.join());
     await tab("예외 목록"); await app.sleep(300);
 
     // ---------- 키보드만으로 CUJ-1 (T6.4) ----------

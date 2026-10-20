@@ -40,10 +40,11 @@ function decode(buf) {
 }
 
 function createWindow() {
+  const hidden = runtimeEnv.e2eHidden(process.env);                       // 시험 전용: 창을 띄우지 않는다
   const win = new BrowserWindow({
-    width: 1280, height: 820, minWidth: 900, minHeight: 600, title: "납기 알리미",
+    width: 1280, height: 820, minWidth: 900, minHeight: 600, title: "납기 알리미", show: !hidden,
     icon: path.join(__dirname, "build", "icon.png"),
-    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false },
+    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, backgroundThrottling: !hidden },
   });
   win.setMenuBarVisibility(false);
   win.loadFile(path.join(__dirname, "renderer", "index.html"));

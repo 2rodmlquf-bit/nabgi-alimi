@@ -43,6 +43,15 @@ h2 { margin: 0; font-size: 16px; font-weight: 700; }
   background: color-mix(in srgb, var(--bg1) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .subbar { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 18px; }
 .subbar .settings { background: none; border: 0; padding: 0; }
+/* 상단: 왼쪽은 자주 하는 일을 업무 순서대로(목록 열기 → 이메일 납기 추출 → 화면 탭), 오른쪽 위는 가끔 바꾸는 기초 설정 */
+.topline { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 18px; }
+.workbar { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.workbar .tabs { align-self: center; }
+.statusline { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.topline .setup { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; flex: 1 1 560px; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 10px; }
+.topline .setup button.quiet { padding: 6px 12px; }
+.topline .brand { flex: 0 1 auto; }
+.setuplabel { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .02em; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); }
 .top .logo { width: 40px; height: 40px; }
 .top h1 { font-size: 20px; }
 .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
