@@ -1,6 +1,6 @@
 {
   "name": "delivery-watch",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "납기 임박·지연 주문만 보여 주는 예외 목록 앱",
   "author": "delivery-watch",
   "main": "main.js",
