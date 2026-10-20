@@ -284,3 +284,14 @@ th.sortable:hover { color: var(--accent); }
 .notebox .hist li:last-child { border-bottom: 0; }
 .notebox .nt { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .notebox .ntext { flex: 1; white-space: pre-wrap; overflow-wrap: anywhere; }
+.glance { border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 3px 10px; margin: 4px 0; font-size: 13px; line-height: 1.4; }
+.glance p { margin: 1px 0; overflow-wrap: anywhere; }
+.glance .badge { font-size: 12px; padding: 0 8px; }
+.draftbox summary { cursor: pointer; font-weight: 700; }
+.replybox .row label { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+/* 상세 맨 위에 한눈에를 넣으면서도 '안내함으로 기록' 단추가 1280x820에서 스크롤 없이 보이게(FR-17) 위쪽 여백을 줄인다 */
+.detail { padding-top: 12px; }
+.detail .informbox { margin-top: 6px; padding-top: 8px; gap: 6px; }
+.glance { margin: 2px 0; }
+.detail h2 + p { margin: 4px 0 6px; }
+.glance p { margin: 0; }

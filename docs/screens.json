@@ -319,7 +319,7 @@
       "name": "공급사 회신·약속일",
       "depth": 3,
       "form": "영역",
-      "status": "신규",
+      "status": "유지",
       "scope": "in"
     },
     {
@@ -327,7 +327,7 @@
       "name": "한눈에 (문의 대응 요약)",
       "depth": 3,
       "form": "영역",
-      "status": "신규",
+      "status": "유지",
       "scope": "in"
     },
     {
@@ -335,7 +335,7 @@
       "name": "답변 초안",
       "depth": 3,
       "form": "영역",
-      "status": "신규",
+      "status": "유지",
       "scope": "in"
     }
   ]

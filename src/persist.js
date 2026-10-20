@@ -121,6 +121,7 @@
     return { edited: Object.keys(s.edited).length, causeOverride: Object.keys(s.causeOverride).length, reasons: Object.keys(s.reasons).length };
   }
 
-  const api = { empty, clean, applySavedDue, mergeState, counts };
+  const REPLIES_MAX = 20;                                                                       // 주문당 살아 있는 회신 상한 (ADR-0007)
+  const api = { REPLIES_MAX, empty, clean, applySavedDue, mergeState, counts };
   if (typeof module !== "undefined") module.exports = api; else root.Persist = api;
 })(typeof window !== "undefined" ? window : globalThis);

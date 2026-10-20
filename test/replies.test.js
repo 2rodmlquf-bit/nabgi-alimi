@@ -134,3 +134,32 @@ test("v3 복원: 서버에서 받은 회신도 로컬에 없는 id만 더해진�
   assert.equal(r.state.orderReplies.A.length, 2);
   assert.equal(Core.mergeRestored(r.state, remote, { now: T2 }).added.orderReplies, undefined);   // 한 번 더 해도 같다
 });
+
+// ---- 한눈에·답변 초안 ----
+test("한눈에: 파일의 납기와 약속일이 다르면 differs, 같으면 아니다. 회신이 없으면 비어 있다", () => {
+  const g = R.glance([rep("2026-10-10", "2026-10-30")], { today: "2026-10-12", due: "2026-09-30" });
+  assert.equal(g.differs, true); assert.equal(g.promised, "2026-10-30"); assert.equal(g.state, "waiting");
+  assert.equal(R.glance([rep("2026-10-10", "2026-10-30")], { today: "2026-10-12", due: "2026-10-30" }).differs, false);
+  const none = R.glance([], { today: "2026-10-12", due: "2026-09-30" });
+  assert.equal(none.last, null); assert.equal(none.differs, false); assert.equal(none.state, "none");
+  assert.equal(R.glance([rep("2026-10-10", "2026-10-05")], { today: "2026-10-12" }).daysLate, 7);
+});
+
+test("이메일 초안: 상태·회신·약속일·다음 조치가 들어가고, 모르는 값은 '확인 중'이다. 조사는 '로'다", () => {
+  const base = { no: "PO-1", product: "유압 호스", researcher: "김연구", statusText: "지연 (D+12)", due: "2026-09-30", today: "2026-10-23", signature: "홍길동 드림" };
+  const m = R.draftEmail({ ...base, replies: [rep("2026-10-10", "2026-10-20", { channel: "전화", note: "다음 주" })] });
+  assert.match(m, /^제목: \[납기 문의 회신\] PO-1 유압 호스/); assert.match(m, /김연구님, 안녕하세요\./);
+  assert.match(m, /2026-10-10에 전화로 약속일 2026-10-20로 안내받았습니다 \(다음 주\)/); assert.match(m, /다음 조치: 약속일이 지나 공급사에 확인하고 있습니다/); assert.match(m, /홍길동 드림$/);
+  const empty = R.draftEmail({ ...base, researcher: "", statusText: "", due: "", replies: [] });
+  assert.match(empty, /현재 상태: 확인 중 \(파일 납기 확인 중\)/); assert.match(empty, /아직 받은 회신이 없습니다/); assert.match(empty, /^제목:[^\n]*\n\n안녕하세요\./);
+  assert.doesNotMatch(m + empty, /으로 |undefined|null/);
+});
+
+test("전화 요점: 3줄이고, 늦음·완료·약속일 없음에 따라 다음 말이 달라진다", () => {
+  const base = { no: "PO-1", statusText: "지연", due: "2026-09-30", today: "2026-10-23" };
+  const late = R.draftCall({ ...base, replies: [rep("2026-10-10", "2026-10-20")] });
+  assert.equal(late.split("\n").length, 3); assert.match(late, /3일 지남/); assert.match(late, /다시 확인하고/);
+  assert.match(R.draftCall({ ...base, received: true, replies: [rep("2026-10-10", "2026-10-20")] }), /입고가 확인됐어요/);
+  assert.match(R.draftCall({ ...base, replies: [rep("2026-10-10", "")] }), /새 약속일은 아직 없어요/);
+  assert.match(R.draftCall({ ...base, replies: [] }), /아직 받은 회신이 없어요/);
+});
