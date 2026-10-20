@@ -14,7 +14,7 @@ const list = dir => fs.readdirSync(path.join(ROOT, dir)).filter(f => f.endsWith(
 const code = f => read(f).replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
 
 const RENDERER_FILES = [...list("renderer"), "preload.js"];
-const SRC_FILES = [...list("src"), ...list("src/store")];
+const SRC_FILES = [...list("src"), ...list("src/store"), ...list("src/sync")];
 
 test("화면(renderer)과 화면이 쓰는 src 코드에 HTML 해석·동적 실행이 0건이다", () => {
   const banned = [/\.innerHTML\s*=/, /\.outerHTML\s*=/, /insertAdjacentHTML/, /document\.write\s*\(/, /\beval\s*\(/, /new Function\s*\(/, /setTimeout\s*\(\s*["'`]/, /dangerouslySetInnerHTML/];
@@ -49,7 +49,8 @@ test("CSP: script-src 'self'만, 인라인·eval·외부 주소 허용 없음", 
 test("preload가 화면에 여는 기능 목록 (늘어나면 이 목록과 함께 검토한다). 키를 읽어 오는 기능은 없다", () => {
   const names = [...code("preload.js").matchAll(/^\s{2}(\w+):/gm)].map(m => m[1]).sort();
   assert.deepEqual(names, ["clearKey", "clearState", "extractEmail", "keyStatus", "loadSample", "loadSampleMails", "loadSampleSupplier", "loadState", "mapColumns",
-    "openCsv", "openMailAttachment", "openOrders", "pickMailFolder", "pickSupplierFile", "saveFile", "saveKey", "saveState", "stateInfo"].sort());
+    "openCsv", "openMailAttachment", "openOrders", "pickMailFolder", "pickSupplierFile", "saveFile", "saveKey", "saveState", "stateInfo",
+    "cloudStatus", "cloudConfigure", "cloudLogin", "cloudLogout", "cloudEnable", "cloudUpload", "cloudPreview", "cloudMigrate", "cloudRestore", "cloudVerify", "cloudUnlink"].sort());   // 클라우드 기능 11개는 ADR-0006. 토큰·키를 돌려주는 것은 없다
   assert.doesNotMatch(read("preload.js"), /require\((?!"electron")/);               // electron 말고 다른 모듈을 끌어오지 않는다
   assert.ok(!names.some(n => /^(getKey|readKey|key)$/.test(n)), "키 값을 돌려주는 기능이 없어야 한다");
 });
@@ -73,4 +74,13 @@ test("CSV로 내보낼 때 =, +, -, @로 시작하는 칸은 수식으로 실행
   const cells = out.split(/\r?\n/).slice(1);
   cells.slice(0, 4).forEach(c => assert.match(c, /^"?'[=+\-@]/, c));
   assert.equal(cells[4], "정상");
+});
+
+test("클라우드 저장: 서버 통신은 src/sync/client.js 한 곳뿐이고, 서비스 키·비밀번호 저장이 없고, 화면은 서버 주소로 직접 통신하지 않는다", () => {
+  const withFetch = SRC_FILES.filter(f => /globalThis\.fetch|fetchImpl/.test(code(f)));
+  assert.deepEqual(withFetch.sort(), ["src/sync/client.js", "src/sync/engine.js"].sort());          // engine은 주입만 받아 넘긴다
+  assert.doesNotMatch(code("src/sync/client.js"), /https?:\/\/(?!localhost|127\.0\.0\.1|\.\.\.|abc)[a-z0-9.-]+\.[a-z]{2,}/i);   // 코드에 박아 둔 서버 주소 없음 (주소는 사용자가 설정)
+  SRC_FILES.concat(["main.js"]).forEach(f => assert.doesNotMatch(code(f), /service_role\s*[:=]\s*["']/, f));
+  assert.doesNotMatch(code("src/sync/filePersist.js"), /password/i);                              // 비밀번호는 저장하지 않는다
+  assert.doesNotMatch(code("renderer/renderer.js"), /supabase\.co|\/rest\/v1|\/auth\/v1/);          // 화면은 서버를 모른다
 });

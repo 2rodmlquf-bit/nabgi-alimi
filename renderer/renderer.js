@@ -1295,5 +1295,101 @@ $("clearSaved").addEventListener("click", async () => {
   $("savedInfo").textContent = "저장 기록을 지웠어요. 지금 열려 있는 목록의 변경은 파일을 다시 열면 원래대로 돌아가요.";
 });
 
+// ---- 클라우드 저장 (SY-11-M 설정, AU-11-M 로그인, SY-21-A 상태, SY-31-M 옮기기·복원) ----
+// 서버와의 통신은 모두 메인 프로세스가 한다. 여기서는 버튼과 안내문만 다룬다. 꺼져 있으면(기본) 아무것도 보내지 않는다.
+const CLOUD_NAMES = { informLog: "안내 기록", quickNotes: "빠른 메모", contactLog: "공급사 연락 기록", substChecks: "대체품 확인", scheduleEntries: "분납 일정", orderMeta: "주문 메모", contactMarks: "연락함 표시", settings: "설정" };
+let cloudTimer = null, cloud0 = null;                                                    // cloud0 = 가장 최근에 받은 상태 (켜짐 여부를 토글 버튼이 안다)
+const cloudWhen = iso => (iso ? new Date(iso).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "아직 없음");
+const cloudList = (obj, names) => Object.entries(obj || {}).filter(([, n]) => n > 0).map(([k, n]) => (names[k] || k) + " " + n + "건").join(", ");
+async function flushSave() { clearTimeout(saveTimer); return window.app.saveState(snapshot()); }   // 올리기·복원 전에 화면의 최신 기록을 먼저 파일에 쓴다
+function cloudBusy(on) { ["cloudUpload", "cloudToggle", "cloudMigrate", "cloudMigrateGo", "cloudRestore", "cloudVerify", "cloudUnlink", "cloudLogout", "cloudLogin", "cloudConfigSave"].forEach(id => { $(id).disabled = on; }); }
+
+async function cloudRefresh() {
+  const st = await window.app.cloudStatus();
+  if (!st || st.ok === false) { $("cloudState").textContent = st && st.error || ""; return; }
+  cloud0 = st;
+  const info = $("cloudInfo");
+  info.hidden = !st.enabled;
+  if (st.enabled) {
+    info.textContent = st.lastError ? "클라우드: 올리지 못했어요 — " + st.lastError + (st.pending ? " (대기 " + st.pending + "건, 기록은 이 컴퓨터에 안전해요)" : "")
+      : st.pending ? "클라우드: 올릴 기록 " + st.pending + "건 대기 중 · 마지막 " + cloudWhen(st.lastSyncedAt) : "클라우드: 모두 올렸어요 · 마지막 " + cloudWhen(st.lastSyncedAt);
+  }
+  $("cloudLoginBlock").hidden = !st.configured; $("cloudOpsBlock").hidden = !st.loggedIn;
+  $("cloudConfigMsg").textContent = st.configured ? "저장돼 있어요: " + st.projectUrl : "";
+  $("cloudState").textContent = !st.configured ? "상태: 아직 연결 전이에요 (이 컴퓨터에만 저장)" : !st.loggedIn ? "상태: 프로젝트는 연결됐고 로그인이 필요해요" + (st.ownerBound ? " (이 컴퓨터는 이미 계정 한 개에 묶여 있어요)" : "")
+    : "상태: " + st.email + " 로 로그인됨 · 클라우드 저장 " + (st.enabled ? "켜짐" : "꺼짐") + " · 올릴 기록 " + st.pending + "건 · 마지막 올림 " + cloudWhen(st.lastSyncedAt) + (st.lastError ? " · 최근 오류: " + st.lastError : "");
+  $("cloudToggle").textContent = st.enabled ? "클라우드 저장 끄기" : "클라우드 저장 켜기";
+  clearInterval(cloudTimer);
+  if (st.enabled) cloudTimer = setInterval(cloudRefresh, 15000);
+}
+$("cloudBtn").addEventListener("click", () => { $("cloudPanel").hidden = !$("cloudPanel").hidden; if (!$("cloudPanel").hidden) cloudRefresh(); });
+$("cloudClose").addEventListener("click", () => { $("cloudPanel").hidden = true; });
+$("cloudConfigSave").addEventListener("click", async () => {
+  const r = await window.app.cloudConfigure({ url: $("cloudUrl").value, key: $("cloudKey").value });
+  $("cloudConfigMsg").textContent = r.ok ? "저장했어요." : r.error;
+  if (r.ok) { $("cloudKey").value = ""; await cloudRefresh(); }
+});
+$("cloudLogin").addEventListener("click", async () => {
+  cloudBusy(true); $("cloudLoginMsg").textContent = "로그인하는 중…";
+  const r = await window.app.cloudLogin($("cloudEmail").value, $("cloudPassword").value);
+  $("cloudPassword").value = ""; cloudBusy(false);
+  $("cloudLoginMsg").textContent = r.ok ? "로그인했어요." : r.error;
+  await cloudRefresh();
+});
+$("cloudLogout").addEventListener("click", async () => { await window.app.cloudLogout(); $("cloudLoginMsg").textContent = ""; await cloudRefresh(); });
+$("cloudToggle").addEventListener("click", async () => {
+  const on = !(cloud0 && cloud0.enabled);
+  const r = await window.app.cloudEnable(on);
+  $("cloudUnlinkMsg").textContent = r.ok ? "" : r.error;
+  if (r.ok && on) { await flushSave(); const u = await window.app.cloudUpload(); if (!u.ok) $("cloudUnlinkMsg").textContent = u.error; }
+  await cloudRefresh();
+});
+$("cloudUpload").addEventListener("click", async () => {
+  cloudBusy(true); await flushSave();
+  const r = await window.app.cloudUpload();
+  cloudBusy(false);
+  $("cloudRestoreInfo").textContent = r.ok ? (r.sent ? r.sent + "건을 올렸어요." : "올릴 새 기록이 없어요.") : r.error;
+  await cloudRefresh();
+});
+$("cloudMigrate").addEventListener("click", async () => {
+  cloudBusy(true); await flushSave();
+  const pv = await window.app.cloudPreview();
+  cloudBusy(false);
+  if (!pv.ok) { $("cloudMigrateInfo").textContent = pv.error; return; }
+  $("cloudMigrateInfo").textContent = pv.total ? "올릴 기록: " + cloudList(pv.counts, Object.fromEntries(Object.entries(pv.labels))) + " (모두 " + pv.total + "건). 이 컴퓨터의 저장 파일을 먼저 백업해요." : "올릴 새 기록이 없어요.";
+  $("cloudMigrateGo").hidden = !pv.total; $("cloudMigrateCancel").hidden = !pv.total;
+});
+$("cloudMigrateCancel").addEventListener("click", () => { $("cloudMigrateGo").hidden = true; $("cloudMigrateCancel").hidden = true; $("cloudMigrateInfo").textContent = "옮기지 않았어요."; });
+$("cloudMigrateGo").addEventListener("click", async () => {
+  cloudBusy(true); $("cloudMigrateInfo").textContent = "백업하고 옮기는 중…";
+  const r = await window.app.cloudMigrate();
+  cloudBusy(false); $("cloudMigrateGo").hidden = true; $("cloudMigrateCancel").hidden = true;
+  if (!r.ok) { $("cloudMigrateInfo").textContent = (r.backup ? "백업은 " + r.backup + " 에 만들었어요. " : "") + r.error; await cloudRefresh(); return; }
+  const diff = Object.entries(r.verify.tables || {}).filter(([, v]) => !v.same).map(([k]) => k);
+  $("cloudMigrateInfo").textContent = "백업(" + r.backup + ") 후 " + r.sent + "건을 올렸어요. " + (r.verify.ok ? (r.verify.same ? "컴퓨터와 서버의 건수가 모두 같아요. 클라우드 저장을 켰어요." : "건수가 다른 표가 있어요: " + diff.join(", ")) : "건수 비교는 못 했어요: " + r.verify.error);
+  await cloudRefresh();
+});
+$("cloudRestore").addEventListener("click", async () => {
+  cloudBusy(true); await flushSave();
+  const r = await window.app.cloudRestore();
+  if (r.ok && r.changed) { await initState(); if (S.rows && S.rows.length) { applySaved(); compute(); } }   // 받아 온 기록을 화면에 반영
+  cloudBusy(false);
+  $("cloudRestoreInfo").textContent = !r.ok ? r.error : r.changed ? "이 컴퓨터에 없던 기록을 가져왔어요: " + cloudList({ ...r.added, ...r.updated }, CLOUD_NAMES) + "." : "가져올 새 기록이 없어요. 이 컴퓨터가 이미 최신이에요.";
+  await cloudRefresh();
+});
+$("cloudVerify").addEventListener("click", async () => {
+  cloudBusy(true); await flushSave(); const r = await window.app.cloudVerify(); cloudBusy(false);
+  $("cloudRestoreInfo").textContent = !r.ok ? r.error : (r.same ? "컴퓨터의 기록이 모두 서버에 있어요." : "서버에 아직 없는 기록이 있어요. '지금 올리기'를 눌러 주세요.") + " (" + Object.values(r.tables).reduce((a, v) => a + v.local, 0) + "건 / 서버 " + Object.values(r.tables).reduce((a, v) => a + v.remote, 0) + "건)";
+});
+let confirmUnlink = false;
+$("cloudUnlink").addEventListener("click", async () => {
+  if (!confirmUnlink) { confirmUnlink = true; $("cloudUnlink").textContent = "정말 풀까요? 한 번 더 누르세요"; return; }
+  confirmUnlink = false; $("cloudUnlink").textContent = "연결 풀기";
+  const r = await window.app.cloudUnlink();
+  $("cloudUnlinkMsg").textContent = r.ok ? "풀었어요. 서버와 이 컴퓨터의 기록은 그대로예요." : r.error;
+  await cloudRefresh();
+});
+cloudRefresh();
+
 $("today").value = localToday();
 initState();

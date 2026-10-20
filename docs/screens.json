@@ -233,6 +233,38 @@
       "form": "영역",
       "status": "유지",
       "scope": "out"
+    },
+    {
+      "id": "SY-11-M",
+      "name": "저장 방식 설정 (클라우드 저장)",
+      "depth": 1,
+      "form": "패널",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "AU-11-M",
+      "name": "로그인",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "SY-21-A",
+      "name": "동기화 상태",
+      "depth": 1,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
+    },
+    {
+      "id": "SY-31-M",
+      "name": "옮기기·복원",
+      "depth": 2,
+      "form": "영역",
+      "status": "유지",
+      "scope": "in"
     }
   ]
 }
