@@ -16,10 +16,16 @@ const OUT = path.join(ROOT, "site", "img");
   const app = await launchApp();
   try {
     await app.viewport(1280, 820);
-    await app.click("#sampleBtn"); await app.showList(); await app.waitFor(async () => (await app.count("#tbody tr")) > 0); await app.sleep(500);
+    await app.click("#sampleBtn"); await app.waitFor(async () => !(await app.eval("document.getElementById('homeView').hidden")), 8000); await app.sleep(500);
+    await app.screenshot(OUT + "/00-home.png");
+    await app.showList(); await app.waitFor(async () => (await app.count("#tbody tr")) > 0); await app.sleep(500);
     await app.screenshot(OUT + "/01-list.png");
     await app.click("#tbody tr:nth-child(2)"); await app.sleep(500);
     await app.screenshot(OUT + "/02-detail.png");
+    const R = '#detail [data-screen-id="LS-37-A"]';
+    await app.setValue(R + ' input[aria-label="회신 받은 날"]', "2026-10-05", "input"); await app.setValue(R + ' input[aria-label="약속일 (선택)"]', "2026-10-09", "input");
+    await app.click(R + " button.primary"); await app.sleep(500);
+    await app.screenshot(OUT + "/06-reply.png");
     await app.click("#tabContact"); await app.sleep(500); await app.screenshot(OUT + "/03-contact.png");
     await app.click("#tabAna"); await app.sleep(500); await app.screenshot(OUT + "/04-analysis.png");
     await app.click("#cloudBtn"); await app.sleep(300);
