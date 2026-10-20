@@ -10,7 +10,7 @@ module.exports = {
   name: "여정 통합: CUJ-1 선제 안내 → CUJ-2 다시 안내(3가지 규칙) → 재시작 복원, 외부 통신 0건",
   run: async ctx => {
     const app = await ctx.launch();
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     const bar = () => app.text("#informBar").then(t => (t || "").replace(/\s+/g, " "));
     const num = async (label) => +((new RegExp(label + " (\\d+)").exec(await bar()) || [])[1] || 0);
@@ -43,7 +43,7 @@ module.exports = {
     await app.close();
 
     const app2 = await ctx.launch({ userData: dir }); cur = app2;
-    await app2.click("#sampleBtn"); await app2.waitFor(async () => (await app2.count("#tbody tr")) > 0);
+    await app2.click("#sampleBtn"); await app2.showList(); await app2.waitFor(async () => (await app2.count("#tbody tr")) > 0);
     const bar2 = (await app2.text("#informBar") || "").replace(/\s+/g, " ");
     ctx.check("CUJ-1 ⑨ 앱을 껐다 켜도 안내 기록이 복원되어 막대 숫자가 그대로다", new RegExp("미안내 " + (none0 - nResearcher) + " ").test(bar2) && new RegExp("완료 " + nResearcher + "\\b").test(bar2), bar2);
 
@@ -89,7 +89,7 @@ module.exports = {
     ctx.check("CUJ-2 준비: 바꿀 주문(" + target + ")의 납기가 실제로 달라졌다 (아직 지연)", changed !== csv);
     const file = path.join(OUT, "s07-납기변경.csv"); fs.writeFileSync(file, changed, "utf8");
     const app3 = await ctx.launch({ userData: dir2, openFile: file });
-    await app3.click("#openBtn"); await app3.waitFor(async () => (await app3.count("#tbody tr")) > 0);
+    await app3.click("#openBtn"); await app3.showList(); await app3.waitFor(async () => (await app3.count("#tbody tr")) > 0);
     await app3.setValue("#today", "2026-10-19"); await app3.sleep(400);
     const row3 = await app3.eval(`[...document.querySelectorAll('#tbody tr')].findIndex(tr => tr.textContent.includes(${JSON.stringify(target)})) + 1`);
     await app3.eval(`[...document.querySelectorAll('#tbody tr')].find(tr => tr.textContent.includes(${JSON.stringify(target)})).click()`); await app3.sleep(300);

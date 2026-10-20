@@ -7,7 +7,7 @@ module.exports = {
   name: "G-8: '확인 필요' 주문을 표에 보이고 안내 기록·추적 대상으로 삼는다",
   run: async ctx => {
     const app = await ctx.launch();
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     const NO = "PO-2026-1037";
     const rowIdx = () => app.eval(`[...document.querySelectorAll('#tbody tr')].findIndex(r => r.children[4].innerText.trim() === ${JSON.stringify(NO)}) + 1`);
@@ -65,7 +65,7 @@ module.exports = {
     const dir = app.userData;
     await app.close();
     const app2 = await ctx.launch({ userData: dir });
-    await app2.click("#sampleBtn");
+    await app2.click("#sampleBtn"); await app2.showList();
     await app2.waitFor(async () => (await app2.count("#tbody tr")) > 0);
     const idx2 = await app2.eval(`[...document.querySelectorAll('#tbody tr')].findIndex(r => r.children[4].innerText.trim() === ${JSON.stringify(NO)}) + 1`);
     const restored = ((await app2.text(`#tbody tr:nth-child(${idx2}) td:nth-child(4)`)) || "").trim();

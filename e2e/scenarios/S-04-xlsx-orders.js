@@ -14,7 +14,7 @@ module.exports = {
     const fx = buildOrderFixtures();
     const put = name => { const f = path.join(OUT, "s04-" + name); fs.writeFileSync(f, fx[name]); return f; };
     const summary = app => app.eval("JSON.stringify({ n: S.rows.length, counts: S.result && S.result.counts, ex: S.result && S.result.exceptions.map(o => o['주문번호'] + ':' + o.status), cols: S.columns })");
-    const open = async file => { const app = await ctx.launch({ openFile: file }); await app.click("#openBtn"); await app.sleep(900); return app; };
+    const open = async file => { const app = await ctx.launch({ openFile: file }); await app.click("#openBtn"); await app.showList(); await app.sleep(900); return app; };
     const noteText = async app => (((await app.text("#fileNote")) || "").replace(/\s+/g, " ").trim());
 
     // ---------- 1. 골든: 같은 내용의 CSV와 xlsx는 같은 결과 ----------
@@ -67,7 +67,7 @@ module.exports = {
       const g = await open(put(name));
       const msg = ((await g.text("#fileName")) || "").trim();
       ctx.check(label + "은(는) 이유를 알려 주고 앱은 계속 쓸 수 있다", re.test(msg) && (await g.eval("document.getElementById('openBtn').disabled")) === false, msg);
-      await g.click("#sampleBtn");
+      await g.click("#sampleBtn"); await g.showList();
       ctx.check(label + " 다음에도 샘플을 열 수 있다", !!(await g.waitFor(async () => (await g.count("#tbody tr")) > 0, 5000)));
       await g.close();
     }

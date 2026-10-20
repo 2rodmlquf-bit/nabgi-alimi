@@ -10,7 +10,7 @@ module.exports = {
 
     ctx.check("시작 직후 '불러온 파일 없음' 화면이 보인다", (await app.eval("document.getElementById('empty').hidden")) === false);
 
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     const rows = await app.waitFor(async () => { const n = await app.count("#tbody tr"); return n > 0 ? n : null; });
     ctx.check("샘플을 열면 예외 목록이 나온다", !!rows, rows + "행");
     const cards = await app.eval("['nLate','nSoon','nOk','nDone','nCheck'].map(id => document.getElementById(id).textContent).join('/')");
@@ -36,7 +36,7 @@ module.exports = {
     const dir = app.userData;
     await app.close();
     const app2 = await ctx.launch({ userData: dir });
-    await app2.click("#sampleBtn");
+    await app2.click("#sampleBtn"); await app2.showList();
     await app2.waitFor(async () => (await app2.count("#tbody tr")) > 0);
     const restored = ((await app2.text("#tbody tr td:nth-child(4)")) || "").trim();
     ctx.check("앱을 다시 켜고 샘플을 열면 기록이 복원된다", restored === "안내 10-12", restored);

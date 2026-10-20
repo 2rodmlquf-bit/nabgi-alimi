@@ -84,7 +84,7 @@ module.exports = {
     ctx.check("헤더에 동기화 상태(SY-21-A)가 나타난다", !(await app.eval("document.getElementById('cloudInfo').hidden")) && /모두 올렸어요/.test(await txt(app, "#cloudInfo")), await txt(app, "#cloudInfo"));
 
     // ---------- 4. 평소 사용: 기록하면 잠시 뒤 자동으로 올라간다 ----------
-    await app.click("#sampleBtn"); await rowsReady(app);
+    await app.click("#sampleBtn"); await app.showList(); await rowsReady(app);
     await app.click("#tbody tr"); await app.sleep(250);
     await app.clickText("#detail button", "안내함으로 기록");
     const auto = await app.waitFor(() => ((fake.db.inform_logs || []).length === 3 ? true : null), 15000);
@@ -118,7 +118,7 @@ module.exports = {
     ctx.check("복원된 기록이 저장 파일에 들어갔다 (안내 3건·사유·연락함 표시·설정)", Object.values(restored.informLog).flat().length === 3 && restored.orderMeta["PO-2026-1002"].reason === "통관 서류" && restored.contactMarks["가온산업"].date === "2026-10-12" && restored.settings.soonRules === "필터=3", JSON.stringify(restored.settings) + " / " + JSON.stringify(fake.db.user_settings));
     await app2.click("#cloudRestore"); await app2.sleep(1500);
     ctx.check("한 번 더 복원해도 '가져올 새 기록이 없어요' (중복 없음)", /가져올 새 기록이 없어요/.test(await txt(app2, "#cloudRestoreInfo")), await txt(app2, "#cloudRestoreInfo"));
-    await app2.click("#sampleBtn"); await rowsReady(app2);
+    await app2.click("#sampleBtn"); await app2.showList(); await rowsReady(app2);
     const shown = await app2.eval("Object.values(S.informed).flat().length");
     ctx.check("목록을 열면 복원된 안내 기록이 화면에도 반영돼 있다", shown === 3, String(shown));
 

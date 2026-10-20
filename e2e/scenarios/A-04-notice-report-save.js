@@ -7,7 +7,7 @@ module.exports = {
   name: "감사: 안내문·보고서·저장 (FR-13~16)",
   run: async ctx => {
     const app = await ctx.launch();
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     const NB = '#detail [data-screen-id="LS-32-A"]';
     const out = () => app.eval(`document.querySelector(${JSON.stringify(NB)} + ' textarea[rows="10"]').value`);

@@ -8,7 +8,7 @@ module.exports = {
   name: "화면 구조·설정 (FR-17 영역 순서, FR-18 다시 안내 기준, FR-19 복사 후 기록 유도)",
   run: async ctx => {
     const app = await ctx.launch();
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     const badge = (row = 1) => app.text(`#tbody tr:nth-child(${row}) td:nth-child(4)`).then(t => (t || "").replace(/\s+/g, " ").trim());
     const bar = () => app.text("#informBar").then(t => (t || "").replace(/\s+/g, " "));
@@ -68,7 +68,7 @@ module.exports = {
     await app.close();
     const app2 = await ctx.launch({ userData: dir });
     ctx.check("FR-18 앱을 다시 켜면 3일이 복원되어 입력 칸에 보인다", (await app2.eval("S.reAlertDays")) === 3 && (await app2.eval("document.getElementById('reAlertDays').value")) === "3");
-    await app2.click("#sampleBtn"); await app2.waitFor(async () => (await app2.count("#tbody tr")) > 0);
+    await app2.click("#sampleBtn"); await app2.showList(); await app2.waitFor(async () => (await app2.count("#tbody tr")) > 0);
     await app2.setValue("#today", "2026-10-15"); await app2.sleep(500);
     ctx.check("FR-18 다시 켠 뒤에도 같은 기준으로 판정한다 (첫 주문이 다시 안내)", (await app2.text("#tbody tr:nth-child(1) td:nth-child(4)") || "").replace(/\s+/g, " ").trim() === "다시 안내");
     await app2.click("#rulesBtn"); await app2.click("#reAlertReset"); await app2.sleep(500);

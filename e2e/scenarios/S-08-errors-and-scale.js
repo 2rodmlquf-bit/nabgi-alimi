@@ -15,7 +15,7 @@ module.exports = {
 
     // ---------- 같은 앱을 두 개 띄움 (G-7) ----------
     const app = await ctx.launch();
-    await app.click("#sampleBtn"); await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
+    await app.click("#sampleBtn"); await app.showList(); await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     const second = spawn(appCommand().cmd, appCommand().args, { env: { ...process.env, NABGI_E2E: "1", NABGI_USER_DATA: app.userData, NABGI_OPEN_FILE: "" }, stdio: "ignore" });
     const exit = await new Promise(res => { const t = setTimeout(() => { try { second.kill(); } catch (e) { /* 이미 끝남 */ } res({ code: "시간 초과" }); }, 12000); second.on("exit", code => { clearTimeout(t); res({ code }); }); });
     ctx.check("G-7 같은 저장 폴더로 앱을 하나 더 띄우면 새 창 없이 곧바로 끝난다 (두 앱이 같은 파일을 덮어쓰지 않게)", exit.code === 0, "종료 코드 " + exit.code);
@@ -26,7 +26,7 @@ module.exports = {
     const blockedDir = fs.mkdtempSync(path.join(os.tmpdir(), "nabgi-blocked-"));
     fs.mkdirSync(path.join(blockedDir, "state.json"));                              // 파일이 아니라 폴더 → 읽기도 쓰기도 못 한다
     const a2 = await ctx.launch({ userData: blockedDir });
-    await a2.click("#sampleBtn"); await a2.waitFor(async () => (await a2.count("#tbody tr")) > 0);
+    await a2.click("#sampleBtn"); await a2.showList(); await a2.waitFor(async () => (await a2.count("#tbody tr")) > 0);
     const info = ((await a2.text("#savedInfo")) || "").trim();
     ctx.check("7-C 저장 파일을 열 수 없어도 앱은 뜨고 화면에 이유를 알린다", /저장 파일을 열지 못했어요/.test(info), info.slice(0, 70));
     await a2.click("#tbody tr"); await a2.sleep(250);
@@ -38,7 +38,7 @@ module.exports = {
 
     // ---------- 기준일·임박 기준에 이상한 값 ----------
     const a3 = await ctx.launch();
-    await a3.click("#sampleBtn"); await a3.waitFor(async () => (await a3.count("#tbody tr")) > 0);
+    await a3.click("#sampleBtn"); await a3.showList(); await a3.waitFor(async () => (await a3.count("#tbody tr")) > 0);
     await a3.setValue("#today", ""); await a3.sleep(400);
     const rows1 = await a3.count("#tbody tr");
     ctx.check("7-C 기준일을 비우면 오늘 날짜로 판정하고 목록은 그대로 나온다 (멈추지 않음)", rows1 > 0 && (await a3.exists("#result")) && (await a3.eval("document.getElementById('result').hidden")) === false, rows1 + "행");
@@ -54,7 +54,7 @@ module.exports = {
     const junk = path.join(OUT, "s08-junk.xlsx"); fs.writeFileSync(junk, Buffer.from([0, 1, 2, 3, 0, 5, 6, 7, 0, 9]));
     for (const [file, re, label] of [[empty, /읽을 수 있는 행이 없어요/, "빈 파일"], [big, /너무 커요/, "20MB를 넘는 큰 파일"], [junk, /엑셀.*CSV|열지 못/, "엑셀도 CSV도 아닌 파일"]]) {
       const a = await ctx.launch({ openFile: file });
-      await a.click("#openBtn"); await a.sleep(1200);
+      await a.click("#openBtn"); await a.showList(); await a.sleep(1200);
       const msg = ((await a.text("#fileName")) || "").trim();
       ctx.check("7-C " + label + "는 이유를 알리고 앱은 계속 쓸 수 있다", re.test(msg) && (await a.eval("document.getElementById('openBtn').disabled")) === false, msg.slice(0, 80));
       await a.close();

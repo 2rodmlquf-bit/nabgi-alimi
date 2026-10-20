@@ -10,7 +10,7 @@ module.exports = {
   run: async ctx => {
     // ---------- 샘플로 확인 ----------
     const app = await ctx.launch();
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
 
     // FR-01: 급한 순서 = 지연(오래된 것부터) → 임박(가까운 것부터)
@@ -63,7 +63,7 @@ module.exports = {
     const bad = path.join(OUT, "bad-headers.csv");
     fs.writeFileSync(bad, "﻿A,B,C,D\nPO-1,볼트,가온산업,2026-10-01\n", "utf8");
     const app2 = await ctx.launch({ openFile: bad });
-    await app2.click("#openBtn");
+    await app2.click("#openBtn"); await app2.showList();
     const mapShown = await app2.waitFor(async () => (await app2.eval("document.getElementById('mapPanel').hidden")) === false, 5000);
     ctx.check("FR-01 필수 열(주문번호·납기일)을 못 찾으면 열 매핑 화면이 열린다", !!mapShown);
     ctx.check("FR-01 그때 목록 화면은 숨겨져 있다", (await app2.eval("document.getElementById('result').hidden")) === true);

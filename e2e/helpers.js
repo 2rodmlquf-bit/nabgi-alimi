@@ -88,6 +88,8 @@ async function launchApp({ userData, openFile } = {}) {
       if (r.result && r.result.exceptionDetails) throw new Error("화면 코드 오류: " + ((r.result.exceptionDetails.exception && r.result.exceptionDetails.exception.description) || r.result.exceptionDetails.text));
       return r.result && r.result.result ? r.result.result.value : undefined;
     },
+    // 파일을 열면 맨 앞 탭이 홈(HM-11-T)이다. 목록·상세를 시험하는 시나리오는 이 도우미로 예외 목록 탭으로 간다. 파일이 안 열렸으면(오류 시험) 기다리다 그냥 넘어간다.
+    showList: async (ms = 2500) => { if (await waitFor(() => app.eval("!document.getElementById('mainTabs').hidden"), ms)) await app.click("#tabList"); },
     sleep, waitFor,
     count: sel => app.eval(`document.querySelectorAll(${q(sel)}).length`),
     exists: async sel => (await app.count(sel)) > 0,

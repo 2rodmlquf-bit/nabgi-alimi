@@ -8,7 +8,7 @@ module.exports = {
   name: "용어·접근성·좁은 창 (금지어 0건, 이름 붙이기, 키보드만으로 CUJ-1, 900x600, 대비)",
   run: async ctx => {
     const app = await ctx.launch();
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     const badge = (row = 1) => app.text(`#tbody tr:nth-child(${row}) td:nth-child(4)`).then(t => (t || "").replace(/\s+/g, " ").trim());
     const active = () => app.eval(`(() => { const a = document.activeElement; return a ? { tag: a.tagName, id: a.id || '', text: (a.textContent || '').trim().slice(0, 20), row: a.closest && a.closest('#tbody tr') ? [...document.querySelectorAll('#tbody tr')].indexOf(a.closest('#tbody tr')) : -1 } : null; })()`);
@@ -45,7 +45,7 @@ module.exports = {
     await app.click("#emailBtn"); (await app.eval(P.UNNAMED)).forEach(x => unnamed.push("이메일 패널: " + x)); await app.eval("document.getElementById('emailClose').click()");
     ctx.check("T6.5 이름 없는 단추·입력·선택·체크박스가 0개다 (aria-label 또는 글자·label)", unnamed.length === 0, unnamed.slice(0, 4).join(", "));
     const tabs = await app.eval(`(() => { const l = document.getElementById('mainTabs'); const t = [...l.querySelectorAll('[role=tab]')]; return { role: l.getAttribute('role'), n: t.length, sel: t.filter(x => x.getAttribute('aria-selected') === 'true').map(x => x.textContent.trim()) }; })()`);
-    ctx.check("T6.5 탭은 tablist/tab이고 지금 탭만 aria-selected=true다", tabs.role === "tablist" && tabs.n === 4 && tabs.sel.length === 1 && tabs.sel[0] === "예외 목록", JSON.stringify(tabs));
+    ctx.check("T6.5 탭은 tablist/tab이고 지금 탭만 aria-selected=true다", tabs.role === "tablist" && tabs.n === 5 && tabs.sel.length === 1 && tabs.sel[0] === "예외 목록", JSON.stringify(tabs));
     await app.eval("document.getElementById('tabList').focus()"); await app.press("ArrowRight");
     const tabs2 = await app.eval(`[...document.querySelectorAll('#mainTabs [role=tab]')].filter(x => x.getAttribute('aria-selected') === 'true').map(x => x.textContent.trim())`);
     ctx.check("T6.5 탭에서 오른쪽 화살표로 다음 탭으로 간다", tabs2.length === 1 && tabs2[0] === "오늘 연락할 곳", tabs2.join());

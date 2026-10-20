@@ -16,7 +16,7 @@ module.exports = {
     const rowsReady = () => app.waitFor(async () => (await app.count("#tbody tr")) > 0);
 
     await collect();                                  // 시작 직후: 고정 화면(빈 화면, 패널, 탭 내용)
-    await app.click("#sampleBtn"); await rowsReady(); await collect();
+    await app.click("#sampleBtn"); await app.showList(); await rowsReady(); await collect();
     await app.click("#tbody tr"); await app.sleep(300); await collect();        // 주문 상세 안의 영역들
     // 분납 일정 영역은 분납 일정이 있는 주문에만 나온다. 샘플에는 없어서 화면 상태에 직접 넣어 본다.
     await app.eval("S.schedule[S.selected] = [{ date: '2026-10-30', qty: '5' }]; render(); 1"); await app.sleep(200); await collect();

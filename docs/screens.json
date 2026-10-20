@@ -271,7 +271,7 @@
       "name": "홈 (지금 할 일)",
       "depth": 1,
       "form": "탭",
-      "status": "신규",
+      "status": "유지",
       "scope": "in"
     },
     {
@@ -279,7 +279,7 @@
       "name": "안내할 것",
       "depth": 2,
       "form": "영역",
-      "status": "신규",
+      "status": "유지",
       "scope": "in"
     },
     {
@@ -287,7 +287,7 @@
       "name": "회신 늦음",
       "depth": 2,
       "form": "영역",
-      "status": "신규",
+      "status": "유지",
       "scope": "in"
     },
     {
@@ -295,7 +295,7 @@
       "name": "오늘 연락할 곳 요약",
       "depth": 2,
       "form": "영역",
-      "status": "신규",
+      "status": "유지",
       "scope": "in"
     },
     {
@@ -303,7 +303,7 @@
       "name": "처음 시작 안내",
       "depth": 2,
       "form": "영역",
-      "status": "신규",
+      "status": "유지",
       "scope": "in"
     },
     {

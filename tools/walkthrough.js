@@ -20,7 +20,7 @@ async function journey(name, app, steps) {
   try {
     await app.eval("Object.defineProperty(navigator, 'clipboard', { value: { writeText: async () => {} }, configurable: true })");
     const wait = () => app.sleep(250);
-    await app.click("#sampleBtn"); await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
+    await app.click("#sampleBtn"); await app.showList(); await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
 
     // CUJ-1 ① 한 건씩 (마우스)
     await journey("CUJ-1 한 건 안내 기록 (마우스)", app, [["주문 선택", async () => { await app.click("#tbody tr"); await wait(); }], ["안내함으로 기록", async () => { await app.clickText("#detail button", "안내함으로 기록"); await wait(); }]]);

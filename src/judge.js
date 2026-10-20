@@ -79,6 +79,7 @@ function findExceptions(orders, today, soonDays = 7) {
   const exceptions = judged.filter(o => o.status === "지연" || o.status === "임박")
     .sort((a, b) => a.daysLeft - b.daysLeft);
   return {
+    all: judged,                                   // 판정한 주문 전부 (홈의 회신 늦음처럼 정상 주문도 봐야 하는 곳이 쓴다)
     exceptions,
     needCheck: judged.filter(o => o.status === "확인필요"),
     counts: {

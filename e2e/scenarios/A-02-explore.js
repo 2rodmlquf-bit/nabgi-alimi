@@ -4,7 +4,7 @@ module.exports = {
   name: "감사: 정렬·검색·필터, 원인 비중 (FR-05·06)",
   run: async ctx => {
     const app = await ctx.launch();
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
 
     const col = i => app.eval(`[...document.querySelectorAll('#tbody tr')].map(r => r.children[${i}].innerText.trim())`);

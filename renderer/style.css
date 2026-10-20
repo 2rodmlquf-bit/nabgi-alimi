@@ -295,3 +295,16 @@ th.sortable:hover { color: var(--accent); }
 .glance { margin: 2px 0; }
 .detail h2 + p { margin: 4px 0 6px; }
 .glance p { margin: 0; }
+/* 홈 (HM-11-T) */
+#homeView { display: flex; flex-direction: column; gap: 12px; }
+.homegrid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.homecard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px; }
+.homecard h3 { margin: 0; font-size: 15px; color: var(--muted); }
+.homebig { margin: 0; font-size: 30px; font-weight: 800; line-height: 1.1; }
+.homelist { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.homelist button.link { text-align: left; padding: 2px 0; }
+.homeempty { background: var(--mint-soft); color: var(--mint); font-weight: 700; padding: 12px 16px; border-radius: 12px; margin: 0; }
+.startguide { background: var(--accent-soft); border-radius: 12px; padding: 12px 16px; }
+.startguide h3 { margin: 0 0 6px; font-size: 15px; }
+.startguide ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.startguide li.done { color: var(--muted); } .startguide li.now { font-weight: 800; color: var(--accent); }

@@ -7,7 +7,7 @@ module.exports = {
   name: "공급사 회신·약속일 (CUJ-5): 기록 → 한눈에 → 답변 초안 → 취소 → 재시작 복원",
   run: async ctx => {
     const app = await ctx.launch();
-    await app.click("#sampleBtn");
+    await app.click("#sampleBtn"); await app.showList();
     await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     const NO = "PO-2026-1002";
     const REPLY = '#detail [data-screen-id="LS-37-A"]', GLANCE = '#detail [data-screen-id="LS-38-A"]', DRAFT = '#detail [data-screen-id="LS-39-A"]';
@@ -56,7 +56,7 @@ module.exports = {
     // ---------- 재시작 복원 ----------
     await app.close();
     const app2 = await ctx.launch({ userData: app.userData });
-    await app2.click("#sampleBtn"); await app2.waitFor(async () => (await app2.count("#tbody tr")) > 0);
+    await app2.click("#sampleBtn"); await app2.showList(); await app2.waitFor(async () => (await app2.count("#tbody tr")) > 0);
     await app2.setValue("#q", "1002", "input"); await app2.sleep(300); await app2.click("#tbody tr"); await app2.sleep(300);
     const g2 = ((await app2.text(GLANCE)) || "").replace(/\s+/g, " ");
     ctx.check("앱을 껐다 켜도 회신 기록이 복원되어 한눈에에 보인다", /회신 2026-10-05/.test(g2) && /약속일 2026-10-09/.test(g2), g2);

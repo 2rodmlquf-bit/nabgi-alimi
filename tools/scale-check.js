@@ -21,7 +21,7 @@ const overflowJs = `(() => {
 (async () => {
   const app = await launchApp();
   try {
-    await app.click("#sampleBtn"); await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
+    await app.click("#sampleBtn"); await app.showList(); await app.waitFor(async () => (await app.count("#tbody tr")) > 0);
     for (const [label, w, h] of SIZES) {
       await app.viewport(w, h); await app.sleep(350);
       const hdr = await app.eval("Math.round(document.querySelector('header.top').getBoundingClientRect().height)");

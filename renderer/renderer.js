@@ -88,7 +88,7 @@ function badge(status) { return el("span", { class: "badge " + (status === "지�
 function daysText(o) { return o.daysLeft == null ? "-" : o.daysLeft < 0 ? "D+" + -o.daysLeft : o.daysLeft === 0 ? "D-day" : "D-" + o.daysLeft; }
 
 // ---- 2차: 지연 원인, 안내문, 지연 분석 ----
-S.reasons = {}; S.causeOverride = {}; S.filter = {}; S.view = "list"; S.bulk = null; S.notice = { template: "사과형", alt: "", signature: "" };
+S.reasons = {}; S.causeOverride = {}; S.filter = {}; S.view = "home"; S.bulk = null; S.notice = { template: "사과형", alt: "", signature: "" };
 // ---- 저장: 직접 고친 값을 이 컴퓨터에 남긴다 ----
 let P = Persist.empty(), saveTimer = null;
 S.savedNote = ""; S.contacted = {}; S.contactLog = {}; S.informed = {}; S.quickNotes = {}; S.replies = {}; S.onlyNeed = false; S.subst = {}; S.schedule = {};
@@ -420,6 +420,15 @@ function bulkBox(d) {
 // ---- 오늘 연락할 곳 ----
 function daysBetween(fromISO, toISO) { const a = Judge.parseDate(fromISO), b = Judge.parseDate(toISO); return a && b ? Math.round((b - a) / 86400000) : 0; }
 
+// "오늘 연락할 곳" 묶음 계산. 연락 탭과 홈(HM-23-A)이 같은 결과를 보도록 한 곳에 둔다. 기준일에 이미 연락·기록한 곳은 finished로 나뉜다.
+function contactPlanNow(base) {
+  const bonus = {};
+  Object.keys(S.contactLog).forEach(sup => { const s = Escalate.status(S.contactLog[sup], base, true); bonus[sup] = Math.min(s.attempts, 3) * 4 + (s.promiseBroken ? 6 : 0); });
+  const groups = Contact.plan({ exceptions: S.result.exceptions, needCheck: S.result.needCheck, noReply: S.supRes ? S.supRes.noReply : [], causeOf, bonus });
+  const done = g => S.contacted[g.supplier] === base;
+  return { groups, pending: groups.filter(g => !done(g)), finished: groups.filter(done) };
+}
+
 function renderContact() {
   const box = $("contactView");
   const base = $("today").value || localToday();
@@ -672,13 +681,54 @@ function render() {
   }
   chip.hidden = !hasFilter() || S.view !== "list";
   renderInformBar(); renderDigestBox();
-  $("listView").hidden = S.view !== "list"; $("analysis").hidden = S.view !== "ana"; $("contactView").hidden = S.view !== "contact"; $("reportView").hidden = S.view !== "report";
-  $("tabList").classList.toggle("on", S.view === "list"); $("tabAna").classList.toggle("on", S.view === "ana"); $("tabContact").classList.toggle("on", S.view === "contact"); $("tabReport").classList.toggle("on", S.view === "report");
-  ["tabList", "tabAna", "tabContact", "tabReport"].forEach(id => $(id).setAttribute("aria-selected", String($(id).classList.contains("on"))));   // 스크린리더가 지금 어느 탭인지 알게
+  $("homeView").hidden = S.view !== "home"; $("listView").hidden = S.view !== "list"; $("analysis").hidden = S.view !== "ana"; $("contactView").hidden = S.view !== "contact"; $("reportView").hidden = S.view !== "report";
+  $("tabHome").classList.toggle("on", S.view === "home"); $("tabList").classList.toggle("on", S.view === "list"); $("tabAna").classList.toggle("on", S.view === "ana"); $("tabContact").classList.toggle("on", S.view === "contact"); $("tabReport").classList.toggle("on", S.view === "report");
+  ["tabHome", "tabList", "tabAna", "tabContact", "tabReport"].forEach(id => $(id).setAttribute("aria-selected", String($(id).classList.contains("on"))));   // 스크린리더가 지금 어느 탭인지 알게
+  if (S.view === "home") renderHome();
   if (S.view === "ana") renderAnalysis();
   if (S.view === "contact") renderContact();
   if (S.view === "report") renderReport();
   renderDetail();
+}
+
+// ---- 홈: 오늘 할 일 (HM-11-T, FR-20·26, CUJ-6) ----
+// 안내할 것 · 회신 늦음 · 오늘 연락할 곳 세 묶음의 건수와 상위 3건. 항목을 누르면 그 주문(또는 연락 탭)으로 간다. 계산은 src/home.js·replies.js·contact.js.
+function replyItems() {
+  return S.result.all.map(o => ({ no: NO(o), supplier: supplierOf(o), replies: repliesOf(o), received: o.status === "입고완료", contactedOn: S.contacted[supplierOf(o)] || "" }));
+}
+function goOrder(no) { S.filter = {}; S.q = ""; $("q").value = ""; S.view = "list"; S.selected = no; S.focusDetail = true; render(); }
+function homeCard(id, title, big, sub, items, more) {
+  return el("div", { class: "homecard", "data-screen-id": id }, el("h3", {}, title), el("p", { class: "homebig" }, big), el("p", { class: "sub" }, sub),
+    ...(items.length ? [el("ul", { class: "homelist" }, ...items)] : []), ...(more ? [more] : []));
+}
+function orderLink(no, text) { const b = el("button", { type: "button", class: "link" }, text); b.addEventListener("click", () => goOrder(no)); return el("li", {}, b); }
+function renderHome() {
+  const box = $("homeView"), base = baseDay();
+  const inform = Home.informList(S.result.all, informedOf);
+  const late = Replies.lateOrders(replyItems(), base);
+  const contact = contactPlanNow(base).pending;
+  const sm = Home.summarize({ inform, late, contact });
+  const records = Object.keys(S.informed).length + Object.keys(S.quickNotes).length + Object.keys(S.replies).length;
+  const guide = Home.startSteps({ hasFile: true, opened: !!S.opened, records });
+  const parts = [el("h2", {}, "오늘 할 일"), el("p", { class: "sub" }, "기준일 " + base + ". 안내할 것, 공급사 회신이 늦은 것, 오늘 연락할 곳을 모았어요.")];
+
+  if (guide.show) {                                                           // 처음 시작 안내 (HM-24-A): 끝낸 단계는 흐리게 접는다
+    parts.push(el("div", { class: "startguide", "data-screen-id": "HM-24-A" }, el("h3", {}, "처음이라면 이 순서로 해 보세요"),
+      el("ol", {}, ...guide.steps.map(st => el("li", { class: st.done ? "done" : st.n === guide.current ? "now" : "" }, (st.done ? "✓ " : "") + st.n + ". " + st.title + (st.n === guide.current ? " ← 지금 할 차례" : ""))))));
+  }
+  if (sm.empty) parts.push(el("p", { class: "homeempty" }, "지금 할 일이 없어요. 새 주문 파일을 열거나 내일 다시 확인하세요."));
+
+  const toList = el("button", { type: "button", class: "link" }, "예외 목록에서 보기"); toList.addEventListener("click", () => { S.filter = {}; S.view = "list"; render(); });
+  const toContact = el("button", { type: "button", class: "link" }, "오늘 연락할 곳 탭 열기"); toContact.addEventListener("click", () => { S.view = "contact"; render(); });
+  const lateSub = sm.late.total ? "약속일이 지났는데 새 회신이 없어요." + (sm.late.quiet ? " (오늘 공급사에 연락한 " + sm.late.quiet + "건은 조용히 둬요)" : "") : sm.late.quiet ? "오늘 공급사에 연락한 " + sm.late.quiet + "건은 조용히 둬요." : "약속일이 지난 채 회신이 없는 주문이 없어요.";
+  parts.push(el("div", { class: "homegrid" },
+    homeCard("HM-21-A", "안내할 것", sm.inform.total + "건", "미안내 " + sm.inform.fresh + " · 다시 안내 " + sm.inform.again,
+      sm.inform.top.map(x => orderLink(x.no, x.no + " · " + x.product + " · " + Labels.status(x.status) + (x.again ? " (다시 안내)" : ""))), sm.inform.total ? toList : null),
+    homeCard("HM-22-A", "회신 늦음", sm.late.total + "건", lateSub,
+      sm.late.top.map(x => orderLink(x.no, x.no + " · " + (x.supplier || "공급사 미상") + " · " + x.daysLate + "일째")), null),
+    homeCard("HM-23-A", "오늘 연락할 곳", sm.contact.total + "곳", "관련 주문 " + sm.contact.orders + "건",
+      sm.contact.top.map(g => el("li", {}, g.supplier + " · " + g.orders + "건")), sm.contact.total ? toContact : null)));
+  box.replaceChildren(...parts);
 }
 
 // ---- 대체품 확인·분납 일정 ----
@@ -885,6 +935,7 @@ function renderDetail() {
   const goFocus = S.focusDetail, goScroll = S.scrollDetail; S.focusDetail = false; S.scrollDetail = false;
   const o = listed().find(x => x["주문번호"] === S.selected);
   if (!o) { box.replaceChildren(el("p", { class: "sub" }, "표에서 주문을 누르면 상세가 여기에 보여요.")); return; }
+  S.opened = true;                                                  // 처음 시작 안내(HM-24-A) 2단계: 주문을 눌러 본 적이 있다
   // 좁은 창에서는 상세가 표 아래로 내려가므로, 주문을 고르면 상세로 내려간다 (T6.6). 키보드로 열면 포커스도 옮긴다.
   setTimeout(() => { if (goFocus) box.focus({ preventScroll: true }); if ((goFocus || goScroll) && isNarrow()) scrollBelowHeader(box, "start"); }, 0);
   const back = el("button", { type: "button", class: "quiet backtolist" }, "↑ 목록으로");
@@ -933,7 +984,7 @@ function load(file, isSample) {
   showFileNote(file);
   S.name = file.name; S.columns = parsed.columns; S.rows = parsed.rows; S.selected = null;
   S.mapping = guessMapping(S.columns); S.ai = {}; S.edited = {};
-  S.reasons = {}; S.causeOverride = {}; S.filter = {}; S.view = "list"; S.bulk = null; S.picked = new Set(); S.q = ""; $("q").value = ""; S.sort = null;
+  S.reasons = {}; S.causeOverride = {}; S.filter = {}; S.view = "home"; S.bulk = null; S.picked = new Set(); S.q = ""; $("q").value = ""; S.sort = null;
   if (isSample && file.sampleDate) $("today").value = file.sampleDate;
   if (isSample && S.soonRules == null) { S.soonRules = SAMPLE_RULES; $("rulesText").value = SAMPLE_RULES; persist(); } // 샘플을 처음 열면 샘플용 품목별 기준을 넣어 둔다
   if (missingRequired().length) {
@@ -1351,6 +1402,7 @@ $("mainTabs").addEventListener("keydown", e => {                                
   const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
   next.click(); next.focus();
 });
+$("tabHome").addEventListener("click", () => { S.view = "home"; render(); });
 $("tabList").addEventListener("click", () => { S.view = "list"; render(); });
 $("tabAna").addEventListener("click", () => { S.view = "ana"; render(); });
 $("tabContact").addEventListener("click", () => { S.view = "contact"; render(); });
