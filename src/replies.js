@@ -90,6 +90,24 @@
       "3. 다음: " + (g.state === "late" ? "공급사에 다시 확인하고 결과를 바로 알려 드릴게요" : g.state === "done" ? "입고가 확인됐어요" : g.promised ? "약속일에 맞춰 확인하고 알려 드릴게요" : "공급사에 일정을 확인하고 알려 드릴게요")].join("\n");
   }
 
-  const api = { glance, draftEmail, draftCall, CHANNELS, NOTE_MAX, daysBetween, history, latest, validate, status, lateOrders };
+  // 이메일에서 읽은 결과를 "공급사 회신으로 기록할까요?" 제안으로 바꾼다 (FR-25, Intent 열린 질문 4번의 임시 기본값을 확정).
+  // 제안만 하고, 사람이 누를 때만 기록한다(source: "email"). 틀린 약속일이 쌓이면 "회신 늦음"이 거짓으로 울리기 때문이다.
+  //   item = 이메일 납기 추출 결과 { orderNo, dueDate, confidence("높음"|"보통"|"낮음"), evidence, evidenceOk, mail: { date } }
+  //   ctx  = { today, supplier, existing: 이 주문의 회신 목록 }
+  // 규칙: 근거 문장이 메일 원문에서 확인되지 않으면(evidenceOk 아님) 제안하지 않는다. 신뢰도가 낮으면 약속일을 비운다. 같은 메일을 이미 기록했으면 다시 제안하지 않는다.
+  const localDay = v => { const d = new Date(v); if (isNaN(d)) return ""; return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  function suggestFromMail(item, ctx) {
+    const it = item || {}, c = ctx || {};
+    if (!it.evidence || !it.evidenceOk) return { ok: false, reason: "근거 문장이 메일 원문에서 확인되지 않아 회신 기록은 제안하지 않아요." };
+    const date = (it.mail && localDay(it.mail.date)) || (ISO.test(c.today || "") ? c.today : "");
+    const promised = ISO.test(it.dueDate || "") && it.confidence !== "낮음" ? it.dueDate : "";
+    const v = validate({ date, promised, channel: "메일", note: it.evidence, source: "email", supplier: c.supplier || "" });
+    if (!v.ok) return { ok: false, reason: v.error };
+    const dup = (Array.isArray(c.existing) ? c.existing : []).some(e => e && !e.deletedAt && e.source === "email" && e.date === v.reply.date && (e.promised || "") === v.reply.promised);
+    if (dup) return { ok: false, duplicate: true, reason: "이 메일은 이미 회신으로 기록했어요." };
+    return { ok: true, reply: v.reply, dateDropped: !!it.dueDate && !promised };            // dateDropped = 신뢰도가 낮아 날짜를 비웠다
+  }
+
+  const api = { suggestFromMail, glance, draftEmail, draftCall, CHANNELS, NOTE_MAX, daysBetween, history, latest, validate, status, lateOrders };
   if (typeof module !== "undefined") module.exports = api; else root.Replies = api;
 })(typeof window !== "undefined" ? window : globalThis);

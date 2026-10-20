@@ -163,3 +163,35 @@ test("전화 요점: 3줄이고, 늦음·완료·약속일 없음에 따라 다�
   assert.match(R.draftCall({ ...base, replies: [rep("2026-10-10", "")] }), /새 약속일은 아직 없어요/);
   assert.match(R.draftCall({ ...base, replies: [] }), /아직 받은 회신이 없어요/);
 });
+
+// ---- 이메일에서 회신 기록 제안 (FR-25) ----
+const mailItem = extra => ({ orderNo: "PO-1", dueDate: "2026-10-30", confidence: "높음", evidence: "10월 30일 입고 예정입니다.", evidenceOk: true, mail: { date: "2026-10-12T09:30:00+09:00", subject: "납기 회신" }, ...extra });
+
+test("메일 제안: 근거가 확인된 메일은 메일 방법·source email·약속일·메일 날짜로 제안하고, 원문 근거를 메모로 쓴다", () => {
+  const s = R.suggestFromMail(mailItem(), { today: "2026-10-20", supplier: "가온산업", existing: [] });
+  assert.equal(s.ok, true); assert.deepEqual([s.reply.channel, s.reply.source, s.reply.promised, s.reply.supplier], ["메일", "email", "2026-10-30", "가온산업"]);
+  assert.match(s.reply.date, /^2026-10-1[12]$/);                                                       // 메일 날짜(시간대에 따라 하루 차이 가능)
+  assert.equal(s.reply.note, "10월 30일 입고 예정입니다."); assert.equal(s.dateDropped, false);
+});
+
+test("메일 제안: 근거 문장이 원문에서 확인되지 않으면 제안하지 않는다", () => {
+  assert.equal(R.suggestFromMail(mailItem({ evidenceOk: false }), { today: "2026-10-20" }).ok, false);
+  assert.match(R.suggestFromMail(mailItem({ evidence: "" }), { today: "2026-10-20" }).reason, /근거 문장/);
+  assert.equal(R.suggestFromMail(null, {}).ok, false);
+});
+
+test("메일 제안: 신뢰도가 낮으면 약속일을 비운다(회신 받았다는 사실만 기록). 날짜를 못 읽은 경우도 같다", () => {
+  const low = R.suggestFromMail(mailItem({ confidence: "낮음" }), { today: "2026-10-20" });
+  assert.equal(low.ok, true); assert.equal(low.reply.promised, ""); assert.equal(low.dateDropped, true);
+  const none = R.suggestFromMail(mailItem({ dueDate: "" }), { today: "2026-10-20" });
+  assert.equal(none.reply.promised, ""); assert.equal(none.dateDropped, false);
+  assert.equal(R.suggestFromMail(mailItem({ mail: null }), { today: "2026-10-20" }).reply.date, "2026-10-20");    // 붙여넣은 메일은 날짜를 모르니 기준일
+});
+
+test("메일 제안: 같은 메일(날짜·약속일 같음, source email)을 이미 기록했으면 다시 제안하지 않는다. 취소한 기록은 세지 않는다", () => {
+  const first = R.suggestFromMail(mailItem(), { today: "2026-10-20", existing: [] }).reply;
+  const dup = R.suggestFromMail(mailItem(), { today: "2026-10-20", existing: [{ ...first, id: "x" }] });
+  assert.equal(dup.ok, false); assert.equal(dup.duplicate, true);
+  assert.equal(R.suggestFromMail(mailItem(), { today: "2026-10-20", existing: [{ ...first, id: "x", deletedAt: "2026-10-20T00:00:00.000Z", deletedReason: "user" }] }).ok, true);
+  assert.equal(R.suggestFromMail(mailItem(), { today: "2026-10-20", existing: [{ ...first, id: "x", source: "manual" }] }).ok, true);   // 직접 기록한 것과는 별개
+});
