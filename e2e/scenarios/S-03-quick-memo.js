@@ -66,7 +66,7 @@ module.exports = {
     const stateFile = path.join(app.userData, "state.json");
     const saved = await app.waitFor(() => { try { const j = JSON.parse(fs.readFileSync(stateFile, "utf8")); const l = j.quickNotes && j.quickNotes[NO]; return l && l.some(n => n.deletedAt) ? j : null; } catch (e) { return null; } }, 12000);
     const notes = saved && saved.quickNotes[NO];
-    ctx.check("저장 파일(v1)에 메모 4건이 id·만든 시각과 함께 있고, 지운 1건에는 삭제 표시가 남는다", !!saved && saved.schemaVersion === 1 && notes.length === 4 && notes.every(n => n.id && n.createdAt) && notes.filter(n => n.deletedAt).length === 1, notes ? notes.length + "건, 삭제 표시 " + notes.filter(n => n.deletedAt).length : "저장 안 됨");
+    ctx.check("저장 파일(v2)에 메모 4건이 id·만든 시각과 함께 있고, 지운 1건에는 삭제 표시가 남는다", !!saved && saved.schemaVersion === 2 && notes.length === 4 && notes.every(n => n.id && n.createdAt) && notes.filter(n => n.deletedAt).length === 1, notes ? notes.length + "건, 삭제 표시 " + notes.filter(n => n.deletedAt).length : "저장 안 됨");
     ctx.check("메모를 남겨도 안내 기록은 하나도 생기지 않는다", !saved || !saved.informLog || Object.keys(saved.informLog).length === 0);
 
     // ---------- 8. 다른 주문에는 섞이지 않는다 ----------

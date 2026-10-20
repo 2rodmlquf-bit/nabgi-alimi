@@ -1,8 +1,8 @@
 // 로컬 파일 저장소: 이 컴퓨터의 앱 데이터 폴더에 state.json 한 개로 저장한다 (암호화하지 않는다).
 // 파일 입출력은 모두 여기서만 한다. 메인 프로세스에서 쓴다.
 //
-//  state.json                       현재 저장 파일 (v1)
-//  state.v0.bak.json                예전(v0) 형식 파일을 새 형식으로 바꾸기 직전의 원본 사본. 이미 있고 내용이 다르면 state.v0.bak-<시각>.json
+//  state.json                       현재 저장 파일 (v2)
+//  state.v<N>.bak.json              예전(v0·v1) 형식 파일을 새 형식으로 바꾸기 직전의 원본 사본. 이미 있고 내용이 다르면 state.v<N>.bak-<시각>.json
 //  state.corrupt-<시각>.json        읽을 수 없어서 치워 둔 파일 (지우지 않고 보관한다)
 //  state.json.tmp                   저장 중에만 있는 임시 파일. 다 쓴 뒤 이름을 바꿔 교체하므로, 저장 도중 꺼져도 기존 파일이 남는다
 const fsp = require("fs/promises");
@@ -38,13 +38,15 @@ class LocalFileStore extends BaseStore {
     return name;
   }
 
-  async _backupV0() {
+  // 예전 형식(v0 또는 v1) 파일을 새 형식으로 바꾸기 직전의 원본 사본: state.v<버전>.bak.json
+  async _backupOld(raw, version) {
+    const base = "state.v" + version + ".bak";
     const same = async f => { try { return (await fsp.readFile(f)).equals(await fsp.readFile(this.file)); } catch (e) { return false; } };
-    const first = path.join(this.dir, "state.v0.bak.json");
+    const first = path.join(this.dir, base + ".json");
     const exists = await fsp.access(first).then(() => true, () => false);
-    if (!exists) { await fsp.copyFile(this.file, first); return "state.v0.bak.json"; }
-    if (await same(first)) return "state.v0.bak.json";         // 같은 내용이면 이미 백업된 것
-    const name = "state.v0.bak-" + stamp(this._now()) + ".json"; // 다른 내용이면 덮어쓰지 않고 새 이름으로
+    if (!exists) { await fsp.copyFile(this.file, first); return base + ".json"; }
+    if (await same(first)) return base + ".json";             // 같은 내용이면 이미 백업된 것
+    const name = base + "-" + stamp(this._now()) + ".json";   // 다른 내용이면 덮어쓰지 않고 새 이름으로
     await fsp.copyFile(this.file, path.join(this.dir, name));
     return name;
   }

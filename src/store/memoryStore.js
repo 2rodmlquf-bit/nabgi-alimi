@@ -11,7 +11,7 @@ class MemoryStore extends BaseStore {
   async _write(text) { this.text = text; }
   async _remove() { this.text = null; }
   async _quarantine(raw) { this.quarantined.push(raw); this.text = null; return "memory:corrupt#" + this.quarantined.length; }
-  async _backupV0(raw) { this.backups.push(raw); return "memory:v0#" + this.backups.length; }
+  async _backupOld(raw, version) { this.backups.push(raw); return "memory:v" + version + "#" + this.backups.length; }
   describe() { return { kind: "memory", sizeBytes: this.text == null ? 0 : Buffer.byteLength(this.text) }; }
 }
 

@@ -6,7 +6,7 @@
 //   clear()     -> { ok, error? }                저장 내용을 모두 지운다
 //   info()      -> { kind, notices, readOnly, ... }
 //
-// 구현체가 채울 것: _read() -> 글자|null, _write(글자), _remove(), _quarantine(글자, 이유) -> 보관한 이름, _backupV0(글자) -> 백업 이름, describe()
+// 구현체가 채울 것: _read() -> 글자|null, _write(글자), _remove(), _quarantine(글자, 이유) -> 보관한 이름, _backupOld(글자, 예전 버전 0|1) -> 백업 이름, describe()
 //
 // 안전 원칙: 읽을 수 없거나 새 형식으로 바꿀 수 없으면 **빈 상태로 덮어쓰지 않는다.** 읽기 전용으로 열고 이유를 알려 준다.
 const { randomUUID } = require("crypto");
@@ -52,17 +52,17 @@ class BaseStore {
       this._notice("warn", "future-version", "이 앱보다 새로운 버전에서 만든 저장 파일이에요. 내용을 지키려고 저장하지 않고 읽기만 해요.");
       return;
     }
-    if (ver === 1) { this._state = Core.normalizeState(obj); this._loaded = true; return; }
+    if (ver === Core.SCHEMA_VERSION) { this._state = Core.normalizeState(obj); this._loaded = true; return; }
 
-    // 버전 표시가 없는 예전(v0) 파일: 백업을 먼저 만들고 새 형식으로 바꾼다. 어느 단계든 실패하면 원본은 그대로 둔다.
-    const migrated = Core.migrateV0toV1(obj, { now: this._now(), newId: this._newId });
+    // 예전 형식 파일(버전 표시가 없는 v0, 또는 v1): 백업을 먼저 만들고 새 형식(v2)으로 바꾼다. 어느 단계든 실패하면 원본은 그대로 둔다.
+    const migrated = ver === 0 ? Core.migrateV0toV2(obj, { now: this._now(), newId: this._newId }) : Core.migrateV1toV2(obj, { now: this._now(), newId: this._newId });
     this._state = migrated; this._loaded = true;
     let backupName;
-    try { backupName = await this._backupV0(raw); }
+    try { backupName = await this._backupOld(raw, ver); }
     catch (e) { this._lock("백업을 만들지 못해요"); this._notice("error", "backup-failed", "예전 저장 파일의 백업을 만들지 못해 새 형식으로 바꾸지 않았어요(" + e.message + "). 내용은 읽어 왔지만 저장하지 않아요."); return; }
     try { await this._write(JSON.stringify(migrated)); }
     catch (e) { this._lock("새 형식으로 바꾸지 못해요"); this._notice("error", "migrate-failed", "저장 파일을 새 형식으로 바꾸지 못했어요(" + e.message + "). 내용은 읽어 왔지만 저장하지 않아요. 예전 파일은 그대로예요."); return; }
-    this._notice("info", "migrated", "저장 파일을 새 형식으로 바꿨어요. 예전 파일은 " + backupName + "으로 보관했어요.");
+    this._notice("info", "migrated", "저장 파일을 새 형식(v" + Core.SCHEMA_VERSION + ")으로 바꿨어요. 예전 파일은 " + backupName + "으로 보관했어요.");
   }
 
   load() { return this._serial(async () => { await this._ensureLoaded(); return { view: Core.toView(this._state), notices: this.notices.slice(), readOnly: this.readOnly }; }); }

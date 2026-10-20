@@ -30,7 +30,7 @@ module.exports = {
     const stateFile = path.join(app.userData, "state.json");
     const saved = await app.waitFor(() => (fs.existsSync(stateFile) ? JSON.parse(fs.readFileSync(stateFile, "utf8")) : null), 5000);
     const entries = saved && saved.informLog && saved.informLog[orderNo];   // 저장 모델 v1: informLog
-    ctx.check("임시 저장 폴더의 state.json(v1)에 기록이 id·만든 시각과 함께 들어간다", saved && saved.schemaVersion === 1 && Array.isArray(entries) && entries.length === 1 && entries[0].date === "2026-10-12" && entries[0].status === "지연" && !!entries[0].id && !!entries[0].createdAt && !entries[0].deletedAt, entries ? JSON.stringify(entries[0]) : "저장 안 됨");
+    ctx.check("임시 저장 폴더의 state.json(v2)에 기록이 id·만든 시각과 함께 들어간다", saved && saved.schemaVersion === 2 && Array.isArray(entries) && entries.length === 1 && entries[0].date === "2026-10-12" && entries[0].status === "지연" && !!entries[0].id && !!entries[0].createdAt && !entries[0].deletedAt, entries ? JSON.stringify(entries[0]) : "저장 안 됨");
 
     // 재시작: 같은 저장 폴더로 다시 켠다
     const dir = app.userData;
