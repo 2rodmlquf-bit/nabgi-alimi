@@ -855,6 +855,15 @@ function showFileNote(file) {
   box.replaceChildren(...kids); box.hidden = false;
 }
 
+// 같은 주문번호가 여러 줄이면 알린다: 기록(안내·메모·사유)은 주문번호 하나에 붙으므로 그 줄들에 함께 보인다.
+function addDuplicateNote() {
+  const d = Duplicates.findDuplicates(S.rows, S.mapping["주문번호"]);
+  if (!d.count) return;
+  const box = $("fileNote");
+  box.append(el("p", { class: "warnline" }, "같은 주문번호가 여러 줄에 있어요: " + d.count + "개 번호, " + d.rows + "줄 (예: " + d.sample.map(x => x.no + " " + x.n + "줄").join(", ") + "). 안내 기록·메모·사유는 주문번호 하나에 붙어서, 같은 번호의 줄에는 함께 보여요."));
+  box.hidden = false;
+}
+
 function load(file, isSample) {
   if (file.error) { $("fileName").textContent = file.name + " · " + file.error; showFileNote({}); return; }
   const parsed = file.columns ? { columns: file.columns, rows: file.rows } : Csv.csvToObjects(file.text);   // 엑셀은 읽어서 표로 오고, CSV는 글자로 온다
@@ -869,7 +878,7 @@ function load(file, isSample) {
     $("empty").hidden = true; $("result").hidden = true; $("mainTabs").hidden = true;
     $("fileName").textContent = file.name + " · 필수 열을 찾지 못했어요. 아래에서 직접 연결해 주세요.";
     showMapping();
-  } else { $("mapPanel").hidden = true; applySaved(); compute(); }
+  } else { $("mapPanel").hidden = true; addDuplicateNote(); applySaved(); compute(); }
 }
 
 $("openBtn").addEventListener("click", async () => { const f = await window.app.openOrders(); if (f) load(f, false); });
@@ -1409,6 +1418,11 @@ $("cloudRestore").addEventListener("click", async () => {
 $("cloudVerify").addEventListener("click", async () => {
   cloudBusy(true); await flushSave(); const r = await window.app.cloudVerify(); cloudBusy(false);
   $("cloudRestoreInfo").textContent = !r.ok ? r.error : (r.same ? "컴퓨터의 기록이 모두 서버에 있어요." : "서버에 아직 없는 기록이 있어요. '지금 올리기'를 눌러 주세요.") + " (" + Object.values(r.tables).reduce((a, v) => a + v.local, 0) + "건 / 서버 " + Object.values(r.tables).reduce((a, v) => a + v.remote, 0) + "건)";
+});
+$("cloudExport").addEventListener("click", async () => {
+  await flushSave();
+  const r = await window.app.exportState();
+  $("cloudExportMsg").textContent = r === null ? "취소했어요." : r.ok ? "저장했어요: " + r.path : r.error;
 });
 let confirmUnlink = false;
 $("cloudUnlink").addEventListener("click", async () => {

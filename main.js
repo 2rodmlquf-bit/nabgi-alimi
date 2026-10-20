@@ -12,6 +12,7 @@ const { safeFileName } = require("./src/report");
 const runtimeEnv = require("./src/runtimeEnv");
 const { createSync } = require("./src/sync/engine");
 const { createFilePersist } = require("./src/sync/filePersist");
+const { buildExport, exportFileName } = require("./src/sync/exportJson");
 
 // 개발·E2E 테스트용 환경변수 (src/runtimeEnv.js). 환경변수가 없는 일반 실행에는 영향이 없다.
 // 저장 경로(state.json, 키 파일)는 모두 app.getPath("userData")를 거치므로 여기서 바꾸면 한꺼번에 분리된다.
@@ -218,6 +219,23 @@ ipcMain.handle("state-load", async () => (await getStore().load()).view);
 ipcMain.handle("state-info", async () => { await getStore().load(); return getStore().info(); });   // 알림(이전·손상·읽기 전용)을 화면에 알리려고
 ipcMain.handle("state-save", async (e, data) => { const r = await getStore().save(data); if (r && r.ok) getSync().notifyChanged(); return r; });
 ipcMain.handle("state-clear", () => getStore().clear());
+
+// 내 기록을 JSON 파일로 내보낸다. 저장 위치는 사용자가 저장 창에서 직접 고른다. 토큰·키·클라우드 연결 정보는 넣지 않는다.
+ipcMain.handle("state-export", async () => {
+  try {
+    const { state } = await getStore().snapshot();
+    const body = JSON.stringify(buildExport(state), null, 2);
+    const forced = runtimeEnv.e2eSavePath(process.env);
+    let file = forced;
+    if (!file) {
+      const r = await dialog.showSaveDialog({ title: "내 기록 내보내기", defaultPath: path.join(app.getPath("documents"), exportFileName()), filters: [{ name: "JSON", extensions: ["json"] }] });
+      if (r.canceled || !r.filePath) return null;
+      file = r.filePath;
+    }
+    fs.writeFileSync(file, body, "utf8");
+    return { ok: true, path: file };
+  } catch (err) { return { ok: false, error: "내보내지 못했어요: " + err.message }; }
+});
 
 // 클라우드 저장(Supabase): 올리기·복원·로그인은 모두 여기(메인 프로세스)에서만 한다. 화면은 아래 IPC로 결과만 받는다 (docs/DB_PLAN.md).
 // 꺼져 있거나 로그인하지 않았으면 아무 통신도 하지 않는다. 로그인 토큰은 OS 보안 저장소로 암호화해 보관하고, 비밀번호는 저장하지 않는다.
