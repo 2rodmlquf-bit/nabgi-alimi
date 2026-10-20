@@ -7,7 +7,7 @@
 
 > **데모 데이터**: 가상 주문 엑셀(86건)을 따로 만들어 앱에 열어 봅니다. [`데모데이터/`](데모데이터/설명.md)에서 받거나 `node make-demo-data.js`로 다시 만들 수 있습니다.
 
-> **어디서 보나요**: 소개 페이지 https://nabgi-alimi.vercel.app · 앱 설치 파일 https://github.com/2rodmlquf-bit/nabgi-alimi/releases/latest · 이 컴퓨터에서 바로 실행은 상위 폴더의 `납기알리미-앱실행.bat` (바로가기 모음: `../납기알리미-링크모음.md`)
+> **어디서 보나요**: 소개 페이지 https://nabgi-alimi.vercel.app · 앱 설치 파일 https://github.com/2rodmlquf-bit/nabgi-alimi/releases/latest · 이 컴퓨터에서 바로 실행은 이 폴더의 `납기알리미-앱실행.bat` (바로가기 모음: `../납기알리미-링크모음.md`)
 
 ![예외 목록과 주문 상세](docs/images/01-예외목록.png)
 
