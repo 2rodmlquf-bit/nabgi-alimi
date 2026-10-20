@@ -650,7 +650,7 @@ function render() {
     cb.checked = S.picked.has(NO(o));
     cb.addEventListener("click", e => e.stopPropagation());
     cb.addEventListener("change", () => { if (cb.checked) S.picked.add(NO(o)); else S.picked.delete(NO(o)); renderPickBar(); syncAll(); });
-    const tr = el("tr", { class: S.selected === o["주문번호"] ? "sel" : "", tabindex: "-1", ...(S.selected === o["주문번호"] ? { "aria-current": "true" } : {}) }, el("td", { class: "chk" }, cb), el("td", {}, badge(o.status), ...(o.partial ? [" ", partialBadge(o)] : []), ...(substOpen(o["주문번호"]) ? [" ", substBadge(o["주문번호"])] : [])), el("td", { class: "num" }, daysText(o)), el("td", {}, informedBadge(o), ...(QuickNote.count(S.quickNotes, NO(o)) ? [" ", memoBadge(o)] : [])));
+    const tr = el("tr", { class: S.selected === o["주문번호"] ? "sel" : "", tabindex: "-1", "data-no": o["주문번호"], ...(S.selected === o["주문번호"] ? { "aria-current": "true" } : {}) }, el("td", { class: "chk" }, cb), el("td", {}, badge(o.status), ...(o.partial ? [" ", partialBadge(o)] : []), ...(substOpen(o["주문번호"]) ? [" ", substBadge(o["주문번호"])] : [])), el("td", { class: "num" }, daysText(o)), el("td", {}, informedBadge(o), ...(QuickNote.count(S.quickNotes, NO(o)) ? [" ", memoBadge(o)] : [])));
     cols.forEach(c => tr.append(c === "요청자" ? filterCell("requester", o[c]) : c === "공급사" ? filterCell("supplier", o[c]) : el("td", {}, o[c] || "")));
     tr.addEventListener("click", () => { S.selected = o["주문번호"]; S.scrollDetail = true; render(); });
     tr.addEventListener("keydown", e => rowKey(e, tr, o, cb));
@@ -945,27 +945,35 @@ function scrollBelowHeader(node, block) {
   const r = node.getBoundingClientRect(), room = stickyBottom() + 8;
   window.scrollBy(0, block === "center" ? r.top + r.height / 2 - (room + (window.innerHeight - room) / 2) : r.top - room);
 }
+// 상세 창을 닫고, 보던 주문 줄로 포커스를 돌려준다
+function closeDetail() {
+  const no = S.selected; if (!no) return;
+  S.selected = null; render();
+  const tr = [...$("tbody").querySelectorAll("tr")].find(r => r.dataset.no === no);
+  if (tr) { tr.focus({ preventScroll: true }); scrollBelowHeader(tr, "center"); }
+}
 function renderDetail() {
   const box = $("detail");
   const goFocus = S.focusDetail, goScroll = S.scrollDetail; S.focusDetail = false; S.scrollDetail = false;
   const o = listed().find(x => x["주문번호"] === S.selected);
+  $("listView").classList.toggle("has-detail", !!o);                // 주문을 고르면 상세가 넓은 창으로 열린다 (좁은 오른쪽 칸에서는 입력이 불편했다)
   if (!o) { box.replaceChildren(el("p", { class: "sub" }, "표에서 주문을 누르면 상세가 여기에 보여요.")); return; }
   S.opened = true;                                                  // 처음 시작 안내(HM-24-A) 2단계: 주문을 눌러 본 적이 있다
   // 좁은 창에서는 상세가 표 아래로 내려가므로, 주문을 고르면 상세로 내려간다 (T6.6). 키보드로 열면 포커스도 옮긴다.
-  setTimeout(() => { if (goFocus) box.focus({ preventScroll: true }); if ((goFocus || goScroll) && isNarrow()) scrollBelowHeader(box, "start"); }, 0);
-  const back = el("button", { type: "button", class: "quiet backtolist" }, "↑ 목록으로");
-  back.addEventListener("click", () => { const tr = $("tbody").querySelector("tr.sel"); if (tr) { tr.focus({ preventScroll: true }); scrollBelowHeader(tr, "center"); } });
+  setTimeout(() => { if (goFocus) box.focus({ preventScroll: true }); }, 0);
+  const back = el("button", { type: "button", class: "quiet backtolist" }, "닫기 (Esc)");
+  back.addEventListener("click", closeDetail);
   const dl = el("dl", {});
   Object.entries(o._raw).forEach(([k, v]) => { dl.append(el("dt", {}, k), el("dd", {}, v || "(비어 있음)")); });
   box.replaceChildren(
-    back,
     el("h2", {}, o["주문번호"]),
     el("p", {}, badge(o.status), " ", o.reason),
     S.edited[o["주문번호"]] ? el("p", { class: "edited" }, "이메일 기준으로 납기를 바꿨어요 (원래 값: " + S.edited[o["주문번호"]].from + ")") : el("span", {}),
     glanceBox(o), informedBox(o), replyBox(o), noticeBox(o), draftBox(o), quickNoteBox(o),
     el("p", { class: "sub" }, "아래는 파일에 있던 원래 값이에요."), dl,
     o.status === "지연" ? causeBox(o) : el("span", {}),
-    ...(S.schedule[NO(o)] ? [schedBlock(o)] : []), substBox(o));
+    ...(S.schedule[NO(o)] ? [schedBlock(o)] : []), substBox(o),
+    back);                                                          // 닫기는 글 순서 맨 끝(Tab 순서가 안내 기록보다 뒤), 화면에서는 오른쪽 위에 둔다
 }
 
 // 파일을 읽으면서 알려 줄 것(건너뛴 줄, 잘림, 시트 선택)을 머리 아래에 보여 준다. 잘렸다는 사실은 눈에 띄게(경고색).
@@ -1409,7 +1417,11 @@ $("reAlertReset").addEventListener("click", () => {
   if (S.result) render();
 });
 $("emailClose").addEventListener("click", () => { $("emailPanel").hidden = true; });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("emailPanel").hidden) $("emailPanel").hidden = true; });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (!$("emailPanel").hidden) $("emailPanel").hidden = true;
+  else if (S.selected && S.view === "list" && e.target !== $("q")) closeDetail();
+});
 $("emailSample").addEventListener("click", () => { $("emailText").value = SAMPLE_EMAIL; });
 $("emailRun").addEventListener("click", async () => {
   const text = $("emailText").value, today = $("today").value || localToday();

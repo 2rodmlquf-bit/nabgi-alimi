@@ -18,7 +18,8 @@ module.exports = {
     const m = await measureAt(app, 1280, 820);
     ctx.note("개선 후 측정(1280x820): " + JSON.stringify(m));
     ctx.check("FR-17 안내 현황 막대가 요약 카드 위에 있고 첫 화면에 보인다", m.informBarTop < m.cardsTop && m.informBarVisible === true, "막대 " + m.informBarTop + "px, 카드 " + m.cardsTop + "px");
-    ctx.check("FR-17 상세 패널 순서: 안내 기록 → 안내문 → 빠른 메모 → 파일 원래 값", m["LS-31-A"] < m["LS-32-A"] && m["LS-32-A"] < m["LS-33-A"] && m["LS-33-A"] < m.rawValuesTop, [m["LS-31-A"], m["LS-32-A"], m["LS-33-A"], m.rawValuesTop].join(" < "));
+    const domOrder = await app.eval(`(() => { const d = document.getElementById('detail'); const at = sel => d.querySelector(sel); const els = [at('[data-screen-id="LS-31-A"]'), at('[data-screen-id="LS-32-A"]'), at('[data-screen-id="LS-33-A"]'), at('dl')]; if (els.some(e => !e)) return false; return els.every((e, i) => i === 0 || (els[i - 1].compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0); })()`);
+    ctx.check("FR-17 상세 창 읽는 순서: 안내 기록 → 안내문 → 빠른 메모 → 파일 원래 값 (두 줄로 펼쳐져 있어 글 순서로 본다)", domOrder === true);
     const order = await app.eval(`(() => { const d = document.getElementById('detail'); const pos = sel => { const e = d.querySelector(sel); return e ? e.getBoundingClientRect().top : null; }; return { cause: pos('[data-screen-id="LS-34-A"]'), raw: pos('dl') }; })()`);
     ctx.check("FR-17 파일 원래 값이 지연 원인(LS-34-A)보다 위에 있다", order.raw != null && order.cause != null && order.raw < order.cause, JSON.stringify(order));
     ctx.check("FR-17 합격: 1280x820에서 상세를 연 직후 스크롤 없이 '안내함으로 기록' 버튼이 보인다 (개선 전 1,374px)", m.recordBtnNeedsScroll === 0, m.recordBtnNeedsScroll + "px 필요");
