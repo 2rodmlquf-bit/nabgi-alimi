@@ -680,7 +680,7 @@ function render() {
     chip.replaceChildren(...parts);
   }
   chip.hidden = !hasFilter() || S.view !== "list";
-  renderInformBar(); renderDigestBox();
+  renderInformBar(); renderDigestBox(); renderAsk();
   $("homeView").hidden = S.view !== "home"; $("listView").hidden = S.view !== "list"; $("analysis").hidden = S.view !== "ana"; $("contactView").hidden = S.view !== "contact"; $("reportView").hidden = S.view !== "report";
   $("tabHome").classList.toggle("on", S.view === "home"); $("tabList").classList.toggle("on", S.view === "list"); $("tabAna").classList.toggle("on", S.view === "ana"); $("tabContact").classList.toggle("on", S.view === "contact"); $("tabReport").classList.toggle("on", S.view === "report");
   ["tabHome", "tabList", "tabAna", "tabContact", "tabReport"].forEach(id => $(id).setAttribute("aria-selected", String($(id).classList.contains("on"))));   // 스크린리더가 지금 어느 탭인지 알게
@@ -796,6 +796,21 @@ function substBox(o) {
 }
 
 // 연구원 안내 현황 막대: 안내가 안 된 것·다시 알려야 할 것을 한눈에 보고, 그것만 골라 볼 수 있다
+// 연구원 문의 요약 (LS-27-A, FR-23, CUJ-5): 연구원으로 필터하면 그 사람의 주문을 한 줄로 요약한다. 입고 완료는 뺀다.
+function renderAsk() {
+  const box = $("askBox"), who = S.view === "list" ? S.filter.requester : "";
+  if (!who) { box.hidden = true; box.replaceChildren(); return; }
+  const base = baseDay(), mine = S.result.all.filter(o => norm(o["요청자"], "(요청자 없음)") === who);
+  const inform = Home.informList(mine, informedOf).length;
+  const late = Replies.lateOrders(mine.map(o => ({ no: NO(o), supplier: supplierOf(o), replies: repliesOf(o), received: o.status === "입고완료", contactedOn: S.contacted[supplierOf(o)] || "" })), base);
+  const s = Home.requesterSummary(mine, { informCount: inform, lateCount: late.late.length, quietCount: late.quiet.length });
+  const parts = ["지연 " + s.late, "임박 " + s.soon, "확인 필요 " + s.check];
+  box.replaceChildren(el("b", {}, "연구원 문의 요약 · " + who + " "), "열린 주문 " + s.total + "건 (", parts.join(" · "), ") · 안내할 것 " + s.inform + "건"
+    + (s.replyLate ? " · " : ""), ...(s.replyLate ? [el("span", { class: "badge warn" }, "회신 늦음 " + s.replyLate + "건")] : []),
+    s.replyQuiet ? " (오늘 연락한 " + s.replyQuiet + "건은 조용히 둬요)" : "");
+  box.hidden = false;
+}
+
 function renderInformBar() {
   const bar = $("informBar");
   if (S.view !== "list" || !S.result || !listed().length) { bar.hidden = true; return; }

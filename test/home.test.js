@@ -38,3 +38,10 @@ test("처음 시작 안내: 파일이 있고 기록이 하나도 없을 때만 �
   assert.equal(b.current, 3); assert.deepEqual(b.steps.map(x => x.done), [true, true, false]);
   assert.equal(H.startSteps({ hasFile: true, opened: true, records: 2 }).show, false);            // 기록이 생기면 사라진다
 });
+
+test("연구원 요약: 입고 완료·정상은 빼고 지연·임박·확인 필요만 세고, 안내할 것·회신 늦음 수를 함께 돌려준다", () => {
+  const orders = [o("A", "지연", -3), o("B", "지연", -1), o("C", "임박", 2), o("D", "확인필요", null), o("E", "정상", 30), o("F", "입고완료", -2)];
+  assert.deepEqual(H.requesterSummary(orders, { informCount: 3, lateCount: 1, quietCount: 2 }), { total: 4, late: 2, soon: 1, check: 1, inform: 3, replyLate: 1, replyQuiet: 2 });
+  assert.deepEqual(H.requesterSummary([], {}), { total: 0, late: 0, soon: 0, check: 0, inform: 0, replyLate: 0, replyQuiet: 0 });
+  assert.equal(H.requesterSummary(null).total, 0);
+});
