@@ -291,4 +291,38 @@ function migrateV1toV2(raw, opts = {}) {
 const exceedsLimit = state => JSON.stringify(state).length > MAX_CHARS;
 const WARN_RATIO = 0.8;            // 저장 공간이 이만큼 차면 미리 알린다
 
-module.exports = { SCHEMA_VERSION, MAX_LIVE, CAPS, MAX_TOMBSTONES, MAX_CHARS, WARN_RATIO, emptyState, detectVersion, normalizeState, toView, fromView, migrateV0toV2, migrateV1toV2, exceedsLimit };
+
+// 복원: DB에서 받은 상태(remote)를 로컬 상태에 합친다. 로컬이 기준이라 로컬에 이미 있는 id는 건드리지 않고(삭제 표시도 그대로),
+// 없는 기록만 더한다. 현재 값(주문 메모·연락함 표시·설정)은 updatedAt이 더 새로운 쪽이 이긴다. 한도는 합친 뒤에 지킨다.
+// 돌려주는 값: { state, added: { 표 키: 건수 }, updated: { 표 키: 건수 } }
+function mergeRestored(localState, remoteState, opts = {}) {
+  const now = opts.now || new Date().toISOString();
+  const local = normalizeState(localState), remote = normalizeState(remoteState);
+  const s = JSON.parse(JSON.stringify(local));
+  const added = {}, updated = {};
+  for (const key of Object.keys(CAPS)) {
+    let n = 0;
+    new Set([...Object.keys(local[key]), ...Object.keys(remote[key])]).forEach(k => {
+      const have = new Set((local[key][k] || []).map(e => e.id));
+      const fresh = (remote[key][k] || []).filter(e => !e.deletedAt && !have.has(e.id));
+      if (!fresh.length) return;
+      n += fresh.length;
+      const merged = (local[key][k] || []).concat(fresh).map((e, i) => ({ e, i })).sort((a, b) => (a.e.createdAt || "").localeCompare(b.e.createdAt || "") || a.i - b.i).map(x => x.e);
+      s[key][k] = capLog(merged, now, CAPS[key]);
+    });
+    if (n) added[key] = n;
+  }
+  const newer = (a, b) => !a || (b && (b.updatedAt || "") > (a.updatedAt || ""));
+  for (const key of ["orderMeta", "contactMarks"]) {
+    let n = 0;
+    for (const [k, r] of Object.entries(remote[key])) if (newer(local[key][k], r)) { s[key][k] = r; n++; }
+    if (n) updated[key] = n;
+  }
+  // 앱이 처음 켜질 때 기본값(사과형 안내문 등)이 저장되면서 설정의 시각이 새로 찍힌다. 기본값뿐인 로컬 설정이 서버의 직접 바꾼 설정을 이기면 안 되므로 "아직 안 바꾼 설정"으로 본다.
+  const untouched = st => !st.updatedAt || ((!st.notice || (st.notice.template === "사과형" && !st.notice.alt && !st.notice.signature)) && !st.soonRules && !st.reAlertDays);
+  if (remote.settings.updatedAt && !untouched(remote.settings) && (untouched(local.settings) || newer(local.settings, remote.settings))) { s.settings = remote.settings; updated.settings = 1; }
+  s.savedAt = now;
+  return { state: normalizeState(s), added, updated };
+}
+
+module.exports = { mergeRestored, SCHEMA_VERSION, MAX_LIVE, CAPS, MAX_TOMBSTONES, MAX_CHARS, WARN_RATIO, emptyState, detectVersion, normalizeState, toView, fromView, migrateV0toV2, migrateV1toV2, exceedsLimit };

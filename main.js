@@ -10,6 +10,8 @@ const { parseCsv } = require("./src/csv");
 const OrdersFile = require("./src/ordersFile");
 const { safeFileName } = require("./src/report");
 const runtimeEnv = require("./src/runtimeEnv");
+const { createSync } = require("./src/sync/engine");
+const { createFilePersist } = require("./src/sync/filePersist");
 
 // 개발·E2E 테스트용 환경변수 (src/runtimeEnv.js). 환경변수가 없는 일반 실행에는 영향이 없다.
 // 저장 경로(state.json, 키 파일)는 모두 app.getPath("userData")를 거치므로 여기서 바꾸면 한꺼번에 분리된다.
@@ -213,8 +215,31 @@ const getStore = () => store || (store = createStore({ mode: "local", dir: app.g
 
 ipcMain.handle("state-load", async () => (await getStore().load()).view);
 ipcMain.handle("state-info", async () => { await getStore().load(); return getStore().info(); });   // 알림(이전·손상·읽기 전용)을 화면에 알리려고
-ipcMain.handle("state-save", (e, data) => getStore().save(data));
+ipcMain.handle("state-save", async (e, data) => { const r = await getStore().save(data); if (r && r.ok) getSync().notifyChanged(); return r; });
 ipcMain.handle("state-clear", () => getStore().clear());
+
+// 클라우드 저장(Supabase): 올리기·복원·로그인은 모두 여기(메인 프로세스)에서만 한다. 화면은 아래 IPC로 결과만 받는다 (docs/DB_PLAN.md).
+// 꺼져 있거나 로그인하지 않았으면 아무 통신도 하지 않는다. 로그인 토큰은 OS 보안 저장소로 암호화해 보관하고, 비밀번호는 저장하지 않는다.
+let sync = null;
+const getSync = () => sync || (sync = createSync({
+  store: getStore(),
+  persist: createFilePersist({
+    dir: app.getPath("userData"),
+    crypto: { available: () => safeStorage.isEncryptionAvailable(), encrypt: t => safeStorage.encryptString(t), decrypt: b => safeStorage.decryptString(b) },
+  }),
+}));
+const wrapSync = fn => async (e, ...args) => { try { return await fn(...args); } catch (err) { return { ok: false, error: "예상하지 못한 문제가 생겼어요: " + err.message }; } };
+ipcMain.handle("cloud-status", wrapSync(() => getSync().status()));
+ipcMain.handle("cloud-configure", wrapSync(cfg => getSync().configure(cfg || {})));
+ipcMain.handle("cloud-login", wrapSync((email, password) => getSync().login(email, password)));
+ipcMain.handle("cloud-logout", wrapSync(() => getSync().logout()));
+ipcMain.handle("cloud-enable", wrapSync(on => getSync().setEnabled(!!on)));
+ipcMain.handle("cloud-upload", wrapSync(() => getSync().upload()));
+ipcMain.handle("cloud-preview", wrapSync(() => getSync().preview()));
+ipcMain.handle("cloud-migrate", wrapSync(() => getSync().migrate()));
+ipcMain.handle("cloud-restore", wrapSync(() => getSync().restore()));
+ipcMain.handle("cloud-verify", wrapSync(() => getSync().verify()));
+ipcMain.handle("cloud-unlink", wrapSync(() => getSync().unlink()));
 
 // 같은 저장 폴더를 두 앱이 함께 쓰면 마지막 저장이 이겨서 기록이 사라질 수 있다 → 한 개만 뜨게 한다 (G-7).
 // 두 번째로 켜면 새 창을 만들지 않고 이미 떠 있는 창을 앞으로 가져온다. 잠금은 저장 폴더(userData) 기준이라 E2E의 격리 폴더와 충돌하지 않는다.

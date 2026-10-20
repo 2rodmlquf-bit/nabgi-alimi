@@ -178,6 +178,9 @@ button.nudge { box-shadow: 0 0 0 3px var(--accent); animation: nudgepulse 1.2s e
 .nudgehint { margin-left: 8px; }
 @keyframes nudgepulse { 50% { box-shadow: 0 0 0 7px var(--accent-soft); } }
 @media (prefers-reduced-motion: reduce) { button.nudge { animation: none; } }
+#cloudPanel .block { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+#cloudPanel .block .block { border-top: 1px dashed var(--line); }
+#cloudPanel label { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
 #rulePanel .block { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 #reAlertDays { width: 5em; }
 .chg { color: var(--rose); font-weight: 800; }

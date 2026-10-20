@@ -82,6 +82,35 @@ class BaseStore {
     });
   }
 
+  // ---- 클라우드 저장(올리기·복원)이 쓰는 입구. 화면은 쓰지 않는다 ----
+  snapshot() { return this._serial(async () => { await this._ensureLoaded(); return { state: JSON.parse(JSON.stringify(this._state)), readOnly: this.readOnly }; }); }
+
+  // 클라우드 연결 정보(cloudLink)만 바꾼다. 기록은 건드리지 않는다.
+  setCloudLink(patch) {
+    return this._serial(async () => {
+      await this._ensureLoaded();
+      if (this.readOnly) return { ok: false, error: "저장하지 않았어요: " + this._readOnlyWhy + "." };
+      const next = { ...this._state, cloudLink: { ...this._state.cloudLink, ...patch } };
+      try { await this._write(JSON.stringify(Core.normalizeState(next))); } catch (e) { return { ok: false, error: "저장하지 못했습니다: " + e.message }; }
+      this._state = Core.normalizeState(next);
+      return { ok: true, cloudLink: { ...this._state.cloudLink } };
+    });
+  }
+
+  // DB에서 받은 상태를 합쳐 저장한다 (규칙: Core.mergeRestored). 읽기 전용이면 거부.
+  restore(remoteState) {
+    return this._serial(async () => {
+      await this._ensureLoaded();
+      if (this.readOnly) return { ok: false, error: "저장하지 않았어요: " + this._readOnlyWhy + "." };
+      const r = Core.mergeRestored(this._state, remoteState, { now: this._now() });
+      const text = JSON.stringify(r.state);
+      if (text.length > Core.MAX_CHARS) return { ok: false, error: "받아 온 기록을 합치면 저장 공간(2MB)을 넘어서 합치지 않았어요." };
+      try { await this._write(text); } catch (e) { return { ok: false, error: "저장하지 못했습니다: " + e.message }; }
+      this._state = r.state;
+      return { ok: true, added: r.added, updated: r.updated };
+    });
+  }
+
   clear() {
     return this._serial(async () => {
       await this._ensureLoaded();
