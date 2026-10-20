@@ -1,7 +1,7 @@
 # 데이터베이스 기획 (Supabase) 와 ERD
 
 작성: 2026-10-20 · 방식: `grill-with-docs`로 사용자를 4라운드 인터뷰한 결과 · 상태: **기획과 ERD까지. 구현은 시작하지 않았다(대기).**
-관련: `GLOSSARY.md`(말뜻), `docs/adr/0001~0004`(되돌리기 어려운 결정), `docs/DATA_MODEL.md`(지금의 로컬 형식 v1), `납기-문제정의/prd_supabase.md`(요구사항), `docs/DECISIONS.md` G-6.
+관련: `docs/erd.md`(ERD·로그인), `GLOSSARY.md`(말뜻), `docs/adr/0001~0005`(되돌리기 어려운 결정), `docs/DATA_MODEL.md`(지금의 로컬 형식 v1), `납기-문제정의/prd_supabase.md`(요구사항), `docs/DECISIONS.md` G-6.
 
 > Supabase의 기능·한도·가격·정책은 **확인하지 않았다.** 이 문서의 "착수 때 확인" 항목은 공식 문서로 먼저 확인한다.
 
@@ -13,7 +13,7 @@
 | 목적 | 학습·포트폴리오 (G-6과 같음) | |
 | DB에 넣는 범위 | **기록류만.** 주문 원본은 올리지 않는다 | 주문은 계속 CSV·엑셀에서 읽는다 |
 | legacy(공급사 연락·대체품·분납) | **전부 DB로** (G-6을 바꿈) | ADR-0001. 저장 형식 v2 필요 |
-| 사용자 | 본인 한 명, 이메일 로그인 | 행마다 `user_id`, RLS |
+| 사용자 | 본인 한 명, **이메일+비밀번호 로그인** (공개 가입 닫음, 로그인은 클라우드 저장을 켤 때만, 첫 로그인 계정에 로컬 기록을 묶음) | 행마다 `user_id`(DB가 채움), RLS. 상세는 `docs/erd.md` 2절, ADR-0005 |
 | 오프라인 | **로컬이 기준**, 나중에 올리기 | ADR-0002 |
 | 내려받기 | 올리기 + **수동 복원 버튼** | 다기기 병합은 범위 밖 |
 | 환경 | **프로젝트 2개**(연습용 / 업무용) | ADR-0003. 지금은 연습용만 |
@@ -27,129 +27,7 @@
 
 ## 2. ERD
 
-주문과 공급사는 **표가 아니라 외부 개념**이다(주문은 파일에서 읽고, 공급사는 이름 글자). 그래서 기록 표들 사이에 외래키가 없고, 모든 표가 `auth.users`(Supabase 계정)에만 연결된다. 점선은 "글자로 가리킨다"는 뜻이다.
-
-```mermaid
-erDiagram
-    AUTH_USERS ||--o{ INFORM_LOGS : "user_id"
-    AUTH_USERS ||--o{ QUICK_NOTES : "user_id"
-    AUTH_USERS ||--o{ ORDER_META : "user_id"
-    AUTH_USERS ||--o{ SUBSTITUTE_CHECKS : "user_id"
-    AUTH_USERS ||--o{ SCHEDULE_ENTRIES : "user_id"
-    AUTH_USERS ||--o{ SUPPLIER_CONTACT_LOGS : "user_id"
-    AUTH_USERS ||--o{ SUPPLIER_CONTACT_MARKS : "user_id"
-    AUTH_USERS ||--|| USER_SETTINGS : "user_id"
-
-    ORDER_FILE_ROW }o..o{ INFORM_LOGS : "order_no (글자)"
-    ORDER_FILE_ROW }o..o{ QUICK_NOTES : "order_no (글자)"
-    ORDER_FILE_ROW }o..o| ORDER_META : "order_no (글자)"
-    ORDER_FILE_ROW }o..o{ SUBSTITUTE_CHECKS : "order_no (글자)"
-    ORDER_FILE_ROW }o..o{ SCHEDULE_ENTRIES : "order_no (글자)"
-    SUPPLIER_NAME }o..o{ SUPPLIER_CONTACT_LOGS : "supplier_name (글자)"
-    SUPPLIER_NAME }o..o| SUPPLIER_CONTACT_MARKS : "supplier_name (글자)"
-
-    AUTH_USERS {
-        uuid id PK "Supabase가 관리"
-        text email
-    }
-    ORDER_FILE_ROW {
-        text order_no "DB에 없음. CSV·엑셀에서 읽음"
-    }
-    SUPPLIER_NAME {
-        text supplier_name "DB에 없음. 이름 글자"
-    }
-    INFORM_LOGS {
-        uuid id PK
-        uuid user_id FK
-        text order_no
-        date logged_on
-        text channel "메일|카톡·문자|전화|구두|기타"
-        text status "지연|임박|확인필요"
-        text due "납기일 칸 글자 40자"
-        text note "200자"
-        timestamptz created_at
-        timestamptz deleted_at
-        text deleted_reason "user|cap"
-    }
-    QUICK_NOTES {
-        uuid id PK
-        uuid user_id FK
-        text order_no
-        text body "300자"
-        timestamptz created_at
-        timestamptz deleted_at
-        text deleted_reason "user|cap"
-    }
-    ORDER_META {
-        uuid user_id PK
-        text order_no PK
-        text reason
-        text cause_override
-        text edited_from
-        text edited_to
-        timestamptz updated_at
-    }
-    SUBSTITUTE_CHECKS {
-        uuid id PK
-        uuid user_id FK
-        text order_no
-        text state "의심|확인요청중|승인|거절"
-        text note
-        text sup_item
-        text sup_spec
-        text sup_qty
-        text source
-        date checked_on
-        timestamptz created_at
-        timestamptz deleted_at
-        text deleted_reason "user|cap"
-    }
-    SCHEDULE_ENTRIES {
-        uuid id PK
-        uuid user_id FK
-        text order_no
-        date arrives_on
-        text qty "20자"
-        timestamptz created_at
-        timestamptz deleted_at
-        text deleted_reason "user|cap"
-    }
-    SUPPLIER_CONTACT_LOGS {
-        uuid id PK
-        uuid user_id FK
-        text supplier_name
-        date logged_on
-        text kind "attempt|reply"
-        text channel "10자"
-        date promised_on
-        text note "200자"
-        timestamptz created_at
-        timestamptz deleted_at
-        text deleted_reason "user|cap"
-    }
-    SUPPLIER_CONTACT_MARKS {
-        uuid user_id PK
-        text supplier_name PK
-        date last_contacted_on
-        timestamptz updated_at
-    }
-    USER_SETTINGS {
-        uuid user_id PK
-        jsonb data "안내문 템플릿·서명, 품목별 임박 기준, 다시 안내 일수"
-        timestamptz updated_at
-    }
-```
-
-### 표 읽는 법 (세 종류)
-
-| 종류 | 표 | 규칙 |
-|---|---|---|
-| **쌓는 기록** (append-only) | `inform_logs`, `quick_notes`, `supplier_contact_logs`, `substitute_checks`, `schedule_entries` | 행은 고치지 않는다. 지울 때는 `deleted_at`과 `deleted_reason`만 채운다. `id`는 앱이 만든 UUID라 올리기가 멱등이다 |
-| **현재 값** (last-write-wins) | `order_meta`, `supplier_contact_marks`, `user_settings` | 키 하나에 행 하나. `updated_at`이 최신인 쪽이 이긴다 |
-| **외부 개념** | 주문, 공급사 | 표가 없다. 주문번호·공급사 이름 글자로 가리킨다 (ADR-0004) |
-
-`substitute_checks`는 주문 하나의 **현재** 대체품 상태가 "가장 최근의 삭제 표시 없는 행"이다. 상태가 바뀔 때마다 새 행이 쌓인다(이력이 남는다).
-`schedule_entries`는 주문 하나의 **현재** 분납 일정이 "삭제 표시 없는 모든 행"이다. 일정을 고치면 이전 행에 삭제 표시를 하고 새 행을 쌓는다.
+**ERD는 `docs/erd.md`로 옮겼다**(표 8개, 외부 개념 2개, 로그인 설계, 이 PC에만 있는 연결 정보·세션). 이 문서에는 중복해서 두지 않는다. 표를 읽는 규칙(쌓는 기록 / 현재 값 / 외부 개념)과 `user_id`를 DB가 채우는 방식도 그쪽에 있다.
 
 ## 3. 제약과 인덱스
 
@@ -198,6 +76,7 @@ erDiagram
 | 연락함 표시(`contacted`) | `{공급사: 날짜}` | `{공급사: {date, updatedAt}}` |
 | 대체품 확인(`subst`) | 주문당 하나, 통째로 덮어씀 | 상태가 바뀔 때마다 새 기록(id·시각·삭제 표시) |
 | 분납 일정(`schedule`) | 주문당 목록 통째로 교체, 최대 20건 | 줄마다 `id`, `createdAt`, 삭제 표시 |
+| 클라우드 연결 정보(`cloudLink`) | 없음 | **새 영역**: 켬 여부, 연결한 프로젝트, 주인 계정 id, 연결·마지막 올린 시각 (`docs/erd.md` 3절) |
 | `schemaVersion` | 1 | **2**. v1 → v2 이전은 백업 후, 멱등 |
 
 v1 → v2 이전의 알려진 한계: 예전 삭제 표시에는 취소와 한도로 밀림의 구별 정보가 없었으므로 모두 `user`로 둔다. id가 없던 legacy 기록에는 새 id를 만들고 시각은 그 기록 날짜의 정오로 둔다(안내 기록 이전 때와 같은 방식).
@@ -215,7 +94,7 @@ v1 → v2 이전의 알려진 한계: 예전 삭제 표시에는 취소와 한�
 | **위험** | legacy를 v2로 바꾸면 이전 저장 코드와 시험을 다시 고쳐야 한다(범위가 작지 않다). 안내 기록 쪽 시험(계약·E2E)을 먼저 지켜 둔 채 바꾼다 |
 | **위험** | 대기열 버그로 올리기가 누락되면 DB와 로컬이 어긋난다. 이전 때 건수 비교, 복원 규칙, 계약 시험으로 막는다 |
 | **한계** | DB→로컬 자동 병합이 없으므로 두 PC에서 번갈아 쓰면 어긋난다(범위 밖). 복원은 사용자가 누를 때만 한다 |
-| 열린 질문 | 로그인 방식의 세부(비밀번호 vs 매직링크)와 세션 보관, 오래된 기록 정리, Supabase 한도·정책·리전, 로컬 개발 도구, 대기열을 JSON 한 파일로 둘지 따로 둘지, `import` 이력을 DB에 남길지 |
+| 열린 질문 | 오래된 기록 정리, 계정 바꾸기(연결 해제), Supabase 한도·정책·리전, 로컬 개발 도구, 대기열을 JSON 한 파일로 둘지 따로 둘지, `import` 이력을 DB에 남길지 |
 | 확인하지 않은 것 | Supabase 무료 플랜 한도·일시 정지 정책, 클라이언트 라이브러리를 Electron 메인 프로세스에서 쓰는 방법(공식 문서 확인 필요) |
 
 ## 9. 다음 단계 (아직 시작하지 않음)
