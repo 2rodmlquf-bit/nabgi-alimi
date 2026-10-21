@@ -113,9 +113,13 @@ function persist() {
     if (r.ok) showSaved(); else $("savedInfo").textContent = r.error;
   }, 300);
 }
+// 저장본(P)의 기록을 화면 상태(S)로 복사한다. 두 곳(파일을 새로 열 때, 앱을 켤 때)이 같이 쓴다.
+function copySavedIntoState() {
+  S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.quickNotes = JSON.parse(JSON.stringify(P.quickNotes)); S.replies = JSON.parse(JSON.stringify(P.replies)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
+}
 // 새로 연 목록에 저장된 기록을 다시 적용한다. 새 파일의 납기가 저장된 값과 다르면 덮어쓰지 않고 알린다.
 function applySaved() {
-  S.reasons = { ...P.reasons }; S.causeOverride = { ...P.causeOverride }; S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.quickNotes = JSON.parse(JSON.stringify(P.quickNotes)); S.replies = JSON.parse(JSON.stringify(P.replies)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
+  S.reasons = { ...P.reasons }; S.causeOverride = { ...P.causeOverride }; copySavedIntoState();
   const r = Persist.applySavedDue(S.rows, S.mapping["주문번호"], S.mapping["납기일"], P.edited);
   S.edited = r.applied;
   const n = Object.keys(r.applied).length;
@@ -126,7 +130,7 @@ async function initState() {
   P = Persist.clean(await window.app.loadState());
   const info = await window.app.stateInfo();                      // 저장소가 알려 주는 것: 예전 형식을 바꿨는지, 손상 파일을 치웠는지, 읽기 전용인지
   S.stateNotice = (info && info.notices || []).map(n => n.message).join(" ");
-  S.contacted = { ...P.contacted }; S.contactLog = JSON.parse(JSON.stringify(P.contactLog)); S.informed = JSON.parse(JSON.stringify(P.informed)); S.quickNotes = JSON.parse(JSON.stringify(P.quickNotes)); S.replies = JSON.parse(JSON.stringify(P.replies)); S.subst = JSON.parse(JSON.stringify(P.subst)); S.schedule = JSON.parse(JSON.stringify(P.schedule));
+  copySavedIntoState();
   if (P.notice && Notice.TEMPLATES.includes(P.notice.template)) S.notice = { template: P.notice.template, alt: P.notice.alt, signature: P.notice.signature || "" };
   S.soonRules = P.soonRules;
   S.reAlertDays = P.reAlertDays || null;
@@ -693,8 +697,12 @@ function render() {
 
 // ---- 홈: 오늘 할 일 (HM-11-T, FR-20·26, CUJ-6) ----
 // 안내할 것 · 회신 늦음 · 오늘 연락할 곳 세 묶음의 건수와 상위 3건. 항목을 누르면 그 주문(또는 연락 탭)으로 간다. 계산은 src/home.js·replies.js·contact.js.
-function replyItems() {
-  return S.result.all.map(o => ({ no: NO(o), supplier: supplierOf(o), replies: repliesOf(o), received: o.status === "입고완료", contactedOn: S.contacted[supplierOf(o)] || "" }));
+// 회신을 주문 목록 끝에 붙이고 주문당 상한을 넘으면 오래된 것부터 버린다 (저장소의 상한과 같은 값)
+function addReply(no, reply) {
+  S.replies[no] = [...(S.replies[no] || []), reply].slice(-Persist.REPLIES_MAX);
+}
+function replyItems(orders = S.result.all) {
+  return orders.map(o => ({ no: NO(o), supplier: supplierOf(o), replies: repliesOf(o), received: o.status === "입고완료", contactedOn: S.contacted[supplierOf(o)] || "" }));
 }
 function goOrder(no) { S.filter = {}; S.q = ""; $("q").value = ""; S.view = "list"; S.selected = no; S.focusDetail = true; render(); }
 function homeCard(id, title, big, sub, items, more) {
@@ -802,7 +810,7 @@ function renderAsk() {
   if (!who) { box.hidden = true; box.replaceChildren(); return; }
   const base = baseDay(), mine = S.result.all.filter(o => norm(o["요청자"], "(요청자 없음)") === who);
   const inform = Home.informList(mine, informedOf).length;
-  const late = Replies.lateOrders(mine.map(o => ({ no: NO(o), supplier: supplierOf(o), replies: repliesOf(o), received: o.status === "입고완료", contactedOn: S.contacted[supplierOf(o)] || "" })), base);
+  const late = Replies.lateOrders(replyItems(mine), base);
   const s = Home.requesterSummary(mine, { informCount: inform, lateCount: late.late.length, quietCount: late.quiet.length });
   const parts = ["지연 " + s.late, "임박 " + s.soon, "확인 필요 " + s.check];
   box.replaceChildren(el("b", {}, "연구원 문의 요약 · " + who + " "), "열린 주문 " + s.total + "건 (", parts.join(" · "), ") · 안내할 것 " + s.inform + "건"
@@ -905,8 +913,7 @@ function replyBox(o) {
   rec.addEventListener("click", () => {
     const v = Replies.validate({ date: date.value, promised: promised.value, channel: sel.value, note: note.value.trim(), supplier: supplierOf(o) });
     if (!v.ok) { msg.className = "sub msg-err"; msg.textContent = v.error; return; }
-    (S.replies[no] = S.replies[no] || []).push(v.reply);
-    S.replies[no] = S.replies[no].slice(-Persist.REPLIES_MAX);
+    addReply(no, v.reply);
     S.replyMsg = "회신을 기록했어요."; persist(); render();
   });
   const undo = el("button", { class: "quiet" }, "마지막 기록 취소");
@@ -1086,8 +1093,7 @@ function renderEmailItems(items) {
         b.addEventListener("click", () => {
           const v = Replies.validate(sug.reply);
           if (!v.ok) return;
-          (S.replies[it.orderNo] = S.replies[it.orderNo] || []).push(v.reply);
-          S.replies[it.orderNo] = S.replies[it.orderNo].slice(-Persist.REPLIES_MAX);
+          addReply(it.orderNo, v.reply);
           persist(); render(); renderEmailItems(items);
         });
         card.append(el("div", { class: "row replysuggest" }, b, el("span", { class: "sub" }, "이 메일을 회신으로 기록할까요? 회신 받은 날 " + sug.reply.date + (sug.reply.promised ? " · 약속일 " + sug.reply.promised : " · 약속일 없음" + (sug.dateDropped ? " (신뢰도가 낮아 날짜는 비웠어요)" : "")))));

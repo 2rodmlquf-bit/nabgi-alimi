@@ -17,7 +17,8 @@
 
   // 살아 있는 회신을 오래된 것부터 정렬해서 돌려준다 (삭제 표시된 것은 뺀다)
   const history = list => live(list).slice().sort(byRecent);
-  const latest = list => { const h = history(list); return h.length ? h[h.length - 1] : null; };
+  // 가장 최근 하나만 필요하므로 정렬하지 않고 한 번 훑는다 (같은 날·같은 시각이면 뒤에 있는 것이 이긴다: 정렬 뒤 마지막과 같은 결과)
+  const latest = list => live(list).reduce((best, e) => (!best || byRecent(best, e) <= 0 ? e : best), null);
 
   // 화면에서 받은 입력을 검사하고 저장할 모양으로 만든다. 실패하면 한국어 이유를 돌려준다.
   function validate(input) {
@@ -108,6 +109,6 @@
     return { ok: true, reply: v.reply, dateDropped: !!it.dueDate && !promised };            // dateDropped = 신뢰도가 낮아 날짜를 비웠다
   }
 
-  const api = { suggestFromMail, glance, draftEmail, draftCall, CHANNELS, NOTE_MAX, daysBetween, history, latest, validate, status, lateOrders };
+  const api = { suggestFromMail, glance, draftEmail, draftCall, CHANNELS, NOTE_MAX, history, latest, validate, status, lateOrders };
   if (typeof module !== "undefined") module.exports = api; else root.Replies = api;
 })(typeof window !== "undefined" ? window : globalThis);
