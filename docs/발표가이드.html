@@ -1,0 +1,293 @@
+<title>납기 알리미 발표 가이드</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 레이아웃: 위에서 아래로 "준비 → 시연 순서 → 숫자 → 질문 → 비상" 순서의 한 장짜리 진행표. 시연 순서는 시간·화면·할 일·할 말 네 칸 */
+:root {
+  --bg: #f5f7fa; --surface: #ffffff; --ink: #1d2733; --muted: #5d6b7a; --line: #dde3ea;
+  --accent: #2c5f8d; --accent-soft: #e3eef8; --warn: #a3392f; --warn-soft: #fbe9e6; --ok: #2c7a58; --ok-soft: #e2f3ea;
+  --say-bg: #f0f4f9;
+  --font: "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12181f; --surface: #1a232d; --ink: #e8eef4; --muted: #9aa9b8; --line: #2d3945;
+  --accent: #8fbbe6; --accent-soft: #1f3447; --warn: #f0a79e; --warn-soft: #3a2623; --ok: #8fd3b0; --ok-soft: #1d3329; --say-bg: #202b36; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #12181f; --surface: #1a232d; --ink: #e8eef4; --muted: #9aa9b8; --line: #2d3945;
+  --accent: #8fbbe6; --accent-soft: #1f3447; --warn: #f0a79e; --warn-soft: #3a2623; --ok: #8fd3b0; --ok-soft: #1d3329; --say-bg: #202b36; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.7; padding-block: 0 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 960px; margin: 0 auto; }
+header { padding-block: 32px 8px; }
+h1 { font-size: 28px; line-height: 1.3; margin: 0 0 8px; text-wrap: balance; }
+.lead { color: var(--muted); margin: 0; max-width: 62ch; }
+nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); margin-top: 16px; }
+nav .wrap { display: flex; gap: 4px; overflow-x: auto; padding-block: 8px; }
+nav a { flex: none; color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 500; }
+nav a:hover, nav a:focus-visible { background: var(--accent-soft); color: var(--accent); outline: none; }
+section { padding-block: 32px 0; scroll-margin-top: 60px; }
+h2 { font-size: 20px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 16px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.cols > * { min-width: 0; }
+h3 { font-size: 15px; margin: 0 0 6px; }
+.panel p { margin: 4px 0; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; background: var(--accent-soft); color: var(--accent); padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+.key { font-weight: 700; }
+.warn { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 12px; margin: 10px 0 0; font-size: 14px; }
+.ok { background: var(--ok-soft); color: var(--ok); border-radius: 8px; padding: 8px 12px; margin: 10px 0 0; font-size: 14px; }
+/* 체크리스트 */
+.check { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.check:last-child { border-bottom: 0; }
+.check input { margin-top: 6px; width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
+.check label { cursor: pointer; }
+.check input:checked + label { color: var(--muted); text-decoration: line-through; }
+/* 시연 순서 */
+.step { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 4px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; }
+.time { font-family: var(--mono); font-size: 13px; color: var(--accent); font-weight: 500; padding-top: 2px; }
+.step h3 { margin: 0 0 6px; font-size: 16px; }
+.do { margin: 0 0 8px; padding-left: 18px; }
+.do li { margin: 2px 0; }
+.say { background: var(--say-bg); border-radius: 8px; padding: 10px 14px; margin: 8px 0 0; }
+.say b { display: block; font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: .04em; margin-bottom: 2px; }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; vertical-align: 2px; }
+.tag.alt { background: var(--warn-soft); color: var(--warn); }
+.mini { font-size: 13px; color: var(--muted); }
+@media (max-width: 560px) { .step { grid-template-columns: 1fr; } }
+/* 표 */
+.tw { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; color: var(--muted); font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+details.qa { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; }
+details.qa summary { cursor: pointer; padding: 12px 18px; font-weight: 700; }
+details.qa summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 12px; }
+details.qa p { margin: 0; padding: 0 18px 14px; }
+footer { margin-top: 36px; color: var(--muted); font-size: 13px; }
+a { color: var(--accent); }
+</style>
+
+<div class="wrap">
+<header>
+  <h1>납기 알리미 발표 가이드</h1>
+  <p class="lead">무엇을 보여 주고, 어느 화면을 어떻게 켜고, 무슨 말을 할지 순서대로 적었어요. 시연은 약 7분 기준이고, 시간이 짧으면 표시된 곳만 하면 돼요.</p>
+</header>
+</div>
+<nav><div class="wrap">
+  <a href="#prep">준비</a><a href="#pitch">한 줄 메시지</a><a href="#demo">시연 순서</a><a href="#numbers">숫자</a><a href="#qa">예상 질문</a><a href="#plan-b">비상 대책</a>
+</div></nav>
+
+<div class="wrap">
+<section id="prep">
+  <h2>발표 전 준비</h2>
+  <p class="sub">체크하면 줄이 그어져요(이 브라우저에만 기억돼요).</p>
+  <div class="panel" id="checklist">
+    <div class="check"><input type="checkbox" id="c1"><label for="c1"><span class="key">앱은 발표용 실행 파일로 켜요:</span> <code>납기-알리미\납기알리미-발표용실행.bat</code>. 켤 때마다 깨끗한 첫 화면에서 시작하고, 내 실제 기록은 건드리지 않아요.</label></div>
+    <div class="check"><input type="checkbox" id="c2"><label for="c2"><span class="key">소개 페이지를 브라우저 탭에 미리 열어 둬요:</span> <code>https://nabgi-alimi.vercel.app</code> (안 열리면 <code>납기알리미-소개페이지.url</code>)</label></div>
+    <div class="check"><input type="checkbox" id="c3"><label for="c3"><span class="key">데모 엑셀 위치를 확인해 둬요:</span> <code>납기-알리미\데모데이터\가상주문_연구소_2026-10.xlsx</code></label></div>
+    <div class="check"><input type="checkbox" id="c4"><label for="c4"><span class="key">앱 창을 최대화</span>하고, 알림·메신저는 꺼요.</label></div>
+    <div class="check"><input type="checkbox" id="c5"><label for="c5"><span class="key">리허설을 한 번 해 봐요.</span> 발표용 실행 파일은 켤 때마다 초기화되니, 연습 기록이 남을 걱정은 없어요.</label></div>
+  </div>
+</section>
+
+<section id="pitch">
+  <h2>한 줄 메시지와 세 가지 포인트</h2>
+  <p class="sub">처음과 마지막에 같은 말을 해요.</p>
+  <div class="panel">
+    <p class="key" style="font-size:17px">"납기가 늦어질 때, 연구원에게 먼저 알리고 공급사 회신까지 챙겨 주는 바탕화면 프로그램입니다."</p>
+  </div>
+  <div class="cols" style="margin-top:14px">
+    <div class="panel"><h3>1. 문제</h3><p>누구에게 알렸는지, 오늘 어느 공급사에 연락해야 하는지가 엑셀·메일·메신저에 흩어져 자주 놓쳐요.</p></div>
+    <div class="panel"><h3>2. 해결</h3><p>예외 주문만 골라 보여 주고, 안내 기록을 남기고, 공급사가 약속한 날이 지나면 "회신 늦음"으로 알려요.</p></div>
+    <div class="panel"><h3>3. 만든 방식</h3><p>문서를 먼저 쓰고, 코드는 그다음. AI에게 규칙을 정해 주고 시켰고, 시험과 QA 기록을 남겼어요.</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <h2>시연 순서 (약 7분)</h2>
+  <p class="sub"><span class="tag">필수</span> 표시는 시간이 없어도 꼭 보여 줄 곳, <span class="tag alt">선택</span>은 시간이 되면 보여 줄 곳이에요.</p>
+
+  <div class="step">
+    <div class="time">0:00<br><span class="mini">45초</span></div>
+    <div>
+      <h3>소개 페이지로 시작 <span class="tag">필수</span></h3>
+      <ul class="do">
+        <li>브라우저의 소개 페이지 맨 위, 그리고 "어떤 문제를 풀려고 했나요" 카드 3개를 보여 줘요.</li>
+      </ul>
+      <div class="say"><b>말하기</b>물류 담당자로 일할 때 겪던 일이에요. 지연된 주문을 연구원에게 알렸는지 기억이 안 나고, 오늘 어느 공급사에 연락할지도 머릿속에만 있었어요. 그걸 해결하려고 만들었어요.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="time">0:45<br><span class="mini">30초</span></div>
+    <div>
+      <h3>앱 켜기, 빈 화면 <span class="tag">필수</span></h3>
+      <ul class="do">
+        <li><code>납기알리미-발표용실행.bat</code> 더블클릭. 창이 뜨면 가운데 빈 화면의 시작 순서 안내를 보여 줘요.</li>
+      </ul>
+      <div class="say"><b>말하기</b>설치하는 프로그램이고, 처음 열면 이렇게 순서를 알려 줘요. 인터넷 없이 이 컴퓨터 안에서만 돌아요.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="time">1:15<br><span class="mini">1분</span></div>
+    <div>
+      <h3>회사 엑셀 그대로 열기 <span class="tag">필수</span></h3>
+      <ul class="do">
+        <li>왼쪽 위 <b>목록 열기</b> → <code>가상주문_연구소_2026-10.xlsx</code> 선택.</li>
+        <li>머리 아래 안내 문구를 가리켜요: "표 위의 2줄(제목 등)은 건너뛰고 3번째 줄을 열 이름으로 읽었어요."</li>
+        <li><b>기준일</b> 칸을 <code>2026-10-12</code>로 바꿔요. (안 바꾸면 오늘 날짜로 계산돼 숫자가 소개 페이지와 달라져요.)</li>
+        <li>홈 위의 카드: 지연 19 · 임박 9 · 정상 40 · 입고 완료 14 · 확인 필요 4.</li>
+      </ul>
+      <div class="say"><b>말하기</b>회사 시스템에서 내보낸 엑셀처럼 제목 줄이 위에 있고 열 이름도 제각각이에요. 다시 저장하지 않고 그대로 열면 열을 알아서 연결해요. 납기가 "미정"인 4건은 날짜를 지어내지 않고 '확인 필요'로 따로 둬요.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="time">2:15<br><span class="mini">30초</span></div>
+    <div>
+      <h3>샘플로 바꾸기 <span class="tag">필수</span></h3>
+      <ul class="do">
+        <li>오른쪽 위 <b>샘플 불러오기</b>를 눌러요. (이후 시연은 이 샘플로 해요. 메일 시연이 이 주문 번호와 맞춰져 있어요.)</li>
+        <li>홈에 <b>안내할 것 15건 · 회신 늦음 0건 · 오늘 연락할 곳 6곳</b>이 나와요.</li>
+      </ul>
+      <div class="say"><b>말하기</b>파일을 열면 맨 앞 홈 탭이 "오늘 할 일"을 세 묶음으로 보여 줘요. 안내할 것, 회신이 늦은 것, 오늘 연락할 곳이에요.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="time">2:45<br><span class="mini">1분 15초</span></div>
+    <div>
+      <h3>주문 상세와 안내 기록 <span class="tag">필수</span></h3>
+      <ul class="do">
+        <li>홈 "안내할 것"의 첫 항목(<b>PO-2026-1001</b>)을 눌러요 → 가운데 넓은 상세 창이 열려요.</li>
+        <li>왼쪽 "연구원 안내 기록"에서 방법을 고르고 <b>안내함으로 기록</b>.</li>
+        <li><b>닫기</b>(또는 Esc) → 홈으로 가면 안내할 것이 15건 → 14건으로 줄어 있어요.</li>
+      </ul>
+      <div class="say"><b>말하기</b>누구에게 언제 어떤 방법으로 알렸는지 한 번에 남겨요. 상세는 예전에 오른쪽 좁은 칸에 있었는데, 입력하기 불편해서 넓은 창으로 바꿨어요. 앱은 메시지를 대신 보내지 않고 기록만 남겨요.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="time">4:00<br><span class="mini">1분</span></div>
+    <div>
+      <h3>공급사 회신과 "회신 늦음" <span class="tag">필수</span></h3>
+      <ul class="do">
+        <li>예외 목록에서 두 번째 주문(<b>PO-2026-1002</b>)을 눌러요.</li>
+        <li>오른쪽 "공급사 회신·약속일"에서 회신 받은 날 <code>2026-10-05</code>, 약속일 <code>2026-10-09</code> 입력 → <b>회신 기록</b>.</li>
+        <li>상세 맨 위 "한눈에"에 <b>회신 늦음 3일째</b>가 붙어요. 홈에도 "회신 늦음 1건"이 생겨요.</li>
+      </ul>
+      <div class="say"><b>말하기</b>공급사가 "10월 9일까지 드릴게요"라고 했는데 기준일이 12일이에요. 3일이 지났고 회신도 없으니 알려 줘요. 그날 그 공급사에 연락했다면 조용히 있고, 다음 날 다시 알려요.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="time">5:00<br><span class="mini">30초</span></div>
+    <div>
+      <h3>답변 초안 <span class="tag alt">선택</span></h3>
+      <ul class="do">
+        <li>같은 상세에서 <b>답변 초안</b>을 펼쳐요. 이메일 글과 전화 요점 3줄이 나와요. 복사 단추만 있어요.</li>
+      </ul>
+      <div class="say"><b>말하기</b>연구원이 "그거 어떻게 됐어요?" 물으면 상태·회신·약속일이 채워진 초안을 바로 복사해 써요. 모르는 값은 '확인 중'이라고 적어요.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="time">5:30<br><span class="mini">30초</span></div>
+    <div>
+      <h3>연구원 문의 요약 <span class="tag alt">선택</span></h3>
+      <ul class="do">
+        <li>예외 목록 표에서 <b>요청자</b> 칸의 "연구1팀 A연구원"을 눌러요.</li>
+        <li>위에 한 줄: "열린 주문 3건 (지연 2 · 임박 0 · 확인 필요 1) · 안내할 것 3건".</li>
+      </ul>
+      <div class="say"><b>말하기</b>연구원이 문의하면 그 사람으로 거르는 즉시 한 줄로 답할 수 있어요.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="time">6:00<br><span class="mini">1분</span></div>
+    <div>
+      <h3>메일에서 회신 기록 제안 <span class="tag">필수</span></h3>
+      <ul class="do">
+        <li>위의 <b>필터 해제</b> → <b>이메일 납기 추출</b> → <b>메일 폴더에서 읽기</b> → <b>샘플 메일 폴더 열기</b> → <b>전체 기간</b> → <b>이 메일들에서 납기 추출</b>.</li>
+        <li>카드 4개에 <b>공급사 회신으로 기록</b> 단추가 보여요. 하나를 누르면 4개가 3개로 줄어요.</li>
+      </ul>
+      <div class="say"><b>말하기</b>메일에서 근거 문장이 확인된 주문에만 "이 메일을 회신으로 기록할까요?"라고 제안해요. 날짜가 애매하면 약속일을 비워 둬요. 사람이 누를 때만 기록하고 자동으로 기록하지 않아요. 틀린 약속일이 쌓이면 거짓 알림이 울리기 때문이에요.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="time">7:00<br><span class="mini">1분</span></div>
+    <div>
+      <h3>소개 페이지로 마무리 <span class="tag">필수</span></h3>
+      <ul class="do">
+        <li>브라우저로 돌아가 아래로 내려가며 보여 줘요: <b>버전별 변경점</b> → <b>AI와 일하는 방식(하네스)</b> → <b>얼마나 확인했나요</b>.</li>
+      </ul>
+      <div class="say"><b>말하기</b>AI에게 "알아서 해 줘"가 아니라 순서와 규칙을 파일로 정해 주고 시켰어요. 문서를 먼저 쓰고, 중요한 결정은 제가 승인했고, AI가 직접 한 시험과 제가 눈으로 봐야 하는 시험을 나눠 기록했어요. 처음 한 줄 메시지로 다시 끝내요.</div>
+    </div>
+  </div>
+  <div class="ok">시간이 3분뿐이라면: 0:00 소개 → 1:15 엑셀 열기 → 2:45 안내 기록 → 4:00 회신 늦음 → 7:00 마무리 이렇게 <b>필수</b>만 이어서 해요.</div>
+</section>
+
+<section id="numbers">
+  <h2>말할 때 쓸 숫자</h2>
+  <p class="sub">소개 페이지의 "얼마나 확인했나요"와 같은 값이에요.</p>
+  <div class="tw"><table>
+    <thead><tr><th>값</th><th>무엇인가</th></tr></thead>
+    <tbody>
+      <tr><td class="num">386개</td><td>단위 시험 (판정·계산 규칙)</td></tr>
+      <tr><td class="num">19개</td><td>화면 시나리오(E2E): 앱을 실제로 눌러 보는 자동 시험</td></tr>
+      <tr><td class="num">66개</td><td>DB 규칙 시험 (클라우드 저장용 서버)</td></tr>
+      <tr><td class="num">86건</td><td>데모 엑셀의 가상 주문 (지연 19 · 임박 9 · 정상 40 · 입고 완료 14 · 확인 필요 4)</td></tr>
+      <tr><td class="num">15건</td><td>샘플의 안내할 것 (지연 7 + 임박 6 + 확인 필요 2)</td></tr>
+      <tr><td class="num">v0.7.1</td><td>현재 버전 (v0.4.0에서 시작해 단계별로 키움)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="qa">
+  <h2>예상 질문과 답</h2>
+  <p class="sub">눌러서 펼쳐요.</p>
+  <details class="qa"><summary>왜 메시지를 앱이 대신 보내 주지 않나요?</summary><p>잘못된 내용이 연구원이나 공급사에게 나가면 되돌릴 수 없어요. 앱은 글을 만들어 주고 복사만 해요. 보내는 건 사람이고, 보낸 뒤 "안내함으로 기록"을 눌러요.</p></details>
+  <details class="qa"><summary>실제 업무 데이터로 해 봤나요?</summary><p>아니요. 모두 가상 데이터예요. 그래서 회사 시스템 엑셀처럼 보이게 따로 만든 가상 엑셀(86건)을 앱에 열어 봤어요. 실제 데이터는 쓰지 않았고, 실제 업무에 쓰려면 사람이 한 번 더 확인해야 해요.</p></details>
+  <details class="qa"><summary>가장 어려웠던 점은 무엇인가요?</summary><p>가상 엑셀을 만들었는데 실제 엑셀에서는 열리지 않았어요. 앱 안의 시험은 모두 통과했는데, 앱의 읽기가 관대해서 잘못된 파일도 읽었기 때문이에요. 구조를 고치고 구조를 확인하는 시험을 추가했어요. 시험이 통과해도 실제 환경에서 확인해야 한다는 걸 배웠어요.</p></details>
+  <details class="qa"><summary>"회신 늦음"은 어떻게 판단하나요?</summary><p>가장 최근 회신의 약속일이 기준일보다 지났을 때(당일은 아님)예요. 저장하지 않고 매번 계산해요. 그날 그 공급사에 이미 연락했다면 조용히 있고, 다음 날 다시 알려요.</p></details>
+  <details class="qa"><summary>엑셀 열 이름이 다르거나 날짜가 이상하면요?</summary><p>열 이름은 자동으로 연결하고, 안 맞으면 "열 매핑 보기"에서 직접 고칠 수 있어요. 읽을 수 없는 날짜("미정", "10월 말")는 지어내지 않고 '확인 필요'로 따로 보여 줘요.</p></details>
+  <details class="qa"><summary>서버에 데이터가 올라가나요? 보안은요?</summary><p>기본은 이 컴퓨터에만 저장해요. 클라우드 저장은 설정에서 켜야만 되고, 연습용 서버에 가상 데이터만 올려요. 본인 행만 보이도록 서버 규칙(RLS)을 걸었고 비밀번호는 저장하지 않아요. 앱 안에는 서버 주소나 키가 들어 있지 않아요.</p></details>
+  <details class="qa"><summary>AI를 어떻게 썼나요? 직접 만든 건가요?</summary><p>AI가 코드를 쓰고 저는 무엇을 만들지, 어떤 규칙으로 만들지를 정하고 승인했어요. 문제 정의·화면 구조·사용자 여정·요구사항 문서를 먼저 쓰고, 애매한 건 인터뷰로 정했고, 되돌리기 어려운 결정은 결정 기록(ADR)으로 남겼어요.</p></details>
+  <details class="qa"><summary>아직 부족한 점은 무엇인가요?</summary><p>실제 데이터로 쓰지 않았고, 사람이 눈으로 확인해야 하는 QA 항목(글이 읽기 편한지, 깨끗한 컴퓨터 설치 등)이 남아 있어요. 클라우드는 연습용 서버예요. 다음에는 실제 사용자 한두 명에게 써 보게 하는 것이 먼저예요.</p></details>
+</section>
+
+<section id="plan-b">
+  <h2>문제가 생기면</h2>
+  <div class="cols">
+    <div class="panel"><h3>앱이 안 켜져요</h3><p>작업 표시줄에 이미 켜진 창이 있는지 먼저 봐요(중복 실행은 새 창이 안 떠요). 그래도 안 되면 소개 페이지의 화면 캡처로 설명하고, 그 사이에 <code>납기알리미-앱실행.bat</code>을 다시 눌러요.</p></div>
+    <div class="panel"><h3>엑셀이 안 열려요</h3><p>그 자리에서 <b>샘플 불러오기</b>로 넘어가요. 샘플은 앱 안에 들어 있어서 파일이 필요 없어요.</p></div>
+    <div class="panel"><h3>인터넷이 안 돼요</h3><p>앱은 인터넷 없이도 돼요. 소개 페이지만 안 열리니, 미리 열어 둔 탭을 쓰거나 캡처로 설명해요.</p></div>
+    <div class="panel"><h3>숫자가 달라요</h3><p>기준일이 오늘 날짜로 되어 있는지 봐요. <code>2026-10-12</code>로 바꾸면 돌아와요. 샘플은 자동으로 맞춰져요.</p></div>
+  </div>
+  <p class="warn">클라우드 저장은 시연하지 않는 걸 추천해요. 연습용 서버와 로그인이 필요해서 발표 중 실패할 위험이 커요. 소개 페이지의 클라우드 캡처와 설계 설명으로 대신해요.</p>
+</section>
+
+<footer>이 가이드의 화면 이름과 숫자는 앱 v0.7.1과 소개 페이지 기준이에요. 시연 순서의 클릭 경로와 숫자(15건, 회신 늦음 3일째, 메일 4→3)는 자동 시험과 직접 실행으로 확인했어요. 발표용 실행 파일을 켜는 것까지는 확인했지만, 이 순서대로 처음부터 끝까지 사람이 따라 해 본 리허설은 아직 하지 못했어요.</footer>
+</div>
+
+<script>
+// 체크 상태를 이 브라우저에만 기억한다 (저장이 막혀 있어도 화면은 그대로 동작한다)
+(function () {
+  var key = "nabgi-guide-checks";
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) {}
+  document.querySelectorAll("#checklist input[type=checkbox]").forEach(function (box) {
+    box.checked = !!saved[box.id];
+    box.addEventListener("change", function () {
+      saved[box.id] = box.checked;
+      try { localStorage.setItem(key, JSON.stringify(saved)); } catch (e) {}
+    });
+  });
+})();
+</script>
