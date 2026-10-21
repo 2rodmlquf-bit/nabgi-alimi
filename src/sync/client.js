@@ -67,8 +67,8 @@ function createClient({ url, key, fetchImpl, nowMs = Date.now }) {
       }
     },
     // 건수 (삭제 표시 포함 전체 / 살아 있는 것)
-    async count(table, token, liveOnly) {
-      const r = await call("/rest/v1/" + table + "?select=*" + (liveOnly ? "&deleted_at=is.null" : ""), { method: "HEAD", token, headers: { Prefer: "count=exact", Range: "0-0", "Range-Unit": "items" } });
+    async count(table, token) {
+      const r = await call("/rest/v1/" + table + "?select=*", { method: "HEAD", token, headers: { Prefer: "count=exact", Range: "0-0", "Range-Unit": "items" } });
       const m = /\/(\d+)$/.exec(r.headers.get("content-range") || "");
       return m ? parseInt(m[1], 10) : 0;
     },

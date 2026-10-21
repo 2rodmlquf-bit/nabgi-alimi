@@ -48,6 +48,6 @@
     return { total: open.length, late: count("지연"), soon: count("임박"), check: count("확인필요"), inform: x.informCount || 0, replyLate: x.lateCount || 0, replyQuiet: x.quietCount || 0 };
   }
 
-  const api = { TOP, informList, summarize, startSteps, requesterSummary };
+  const api = { informList, summarize, startSteps, requesterSummary };
   if (typeof module !== "undefined") module.exports = api; else root.Home = api;
 })(typeof window !== "undefined" ? window : globalThis);

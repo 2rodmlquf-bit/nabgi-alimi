@@ -108,6 +108,6 @@
     return { ok: true, reply: v.reply, dateDropped: !!it.dueDate && !promised };            // dateDropped = 신뢰도가 낮아 날짜를 비웠다
   }
 
-  const api = { suggestFromMail, glance, draftEmail, draftCall, CHANNELS, NOTE_MAX, daysBetween, history, latest, validate, status, lateOrders };
+  const api = { suggestFromMail, glance, draftEmail, draftCall, CHANNELS, NOTE_MAX, history, latest, validate, status, lateOrders };
   if (typeof module !== "undefined") module.exports = api; else root.Replies = api;
 })(typeof window !== "undefined" ? window : globalThis);

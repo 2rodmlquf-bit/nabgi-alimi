@@ -14,7 +14,7 @@ const msg = e => (e instanceof CloudError ? e.message : "예상하지 못한 문
 
 function createSync({ store, persist, fetchImpl, now = () => new Date().toISOString(), setTimer = setTimeout, clearTimer = clearTimeout, debounceMs = 3000, autoUpload = true }) {
   const nowMs = () => Date.parse(now());
-  let meta = null, session = null, client = null, busy = null, lastError = "", timer = null, retryMs = 0, loaded = false, lastUploadCount = 0;
+  let meta = null, session = null, client = null, busy = null, lastError = "", timer = null, retryMs = 0, loaded = false;
 
   async function ensure() {
     if (loaded) return;
@@ -24,7 +24,8 @@ function createSync({ store, persist, fetchImpl, now = () => new Date().toISOStr
     if (meta.config) client = createClient({ ...meta.config, fetchImpl, nowMs });
   }
   const saveMeta = () => persist.saveMeta(meta);
-  const snap = async () => (await store.snapshot());
+  // 장부에 "이 줄은 이 지문으로 올렸다"고 적는다 (올리기 네 곳이 같은 줄을 쓴다)
+  const mark = (t, key, fp) => { (meta.ledger[t] = meta.ledger[t] || {})[key] = fp; };
 
   // 한 번에 한 가지 일만 한다 (올리기와 복원이 겹치지 않게)
   function exclusive(fn) {
@@ -44,7 +45,7 @@ function createSync({ store, persist, fetchImpl, now = () => new Date().toISOStr
 
   async function status() {
     await ensure();
-    const { state } = await snap();
+    const { state } = await store.snapshot();
     const link = state.cloudLink, p = Rows.plan(Rows.toRows(state), meta.ledger);
     return {
       configured: !!meta.config, projectUrl: meta.config ? meta.config.url : "", enabled: !!link.enabled, project: link.project,
@@ -72,7 +73,7 @@ function createSync({ store, persist, fetchImpl, now = () => new Date().toISOStr
     if (!String(email || "").trim() || !password) return { ok: false, error: "이메일과 비밀번호를 넣어 주세요." };
     try {
       const s = await client.signIn(String(email).trim(), String(password));
-      const { state, readOnly } = await snap();
+      const { state, readOnly } = await store.snapshot();
       const owner = state.cloudLink.ownerUserId;
       if (owner && owner !== s.userId) return { ok: false, error: "이 컴퓨터의 기록은 다른 계정에 연결되어 있어요. 그 계정으로 로그인해 주세요. (계정을 바꾸려면 먼저 클라우드 연결 해제가 필요해요.)" };
       if (!owner) {
@@ -106,7 +107,7 @@ function createSync({ store, persist, fetchImpl, now = () => new Date().toISOStr
 
   async function preview() {
     await ensure();
-    const { state } = await snap();
+    const { state } = await store.snapshot();
     const rows = Rows.toRows(state), p = Rows.plan(rows, meta.ledger);
     return { ok: true, total: p.total, counts: p.counts, labels: Rows.LABEL, localTotals: Object.fromEntries(Rows.TABLES.map(t => [t, rows[t].length])) };
   }
@@ -114,11 +115,11 @@ function createSync({ store, persist, fetchImpl, now = () => new Date().toISOStr
   // ---- 올리기 ----
   async function sendInserts(table, items, tk, res) {
     for (const part of Rows.chunk(items, BATCH)) {
-      try { await client.insertIgnore(table, tk, part.map(i => i.row)); part.forEach(i => (meta.ledger[table] = meta.ledger[table] || {}, meta.ledger[table][i.key] = i.fp)); res.sent += part.length; }
+      try { await client.insertIgnore(table, tk, part.map(i => i.row)); part.forEach(i => mark(table, i.key, i.fp)); res.sent += part.length; }
       catch (e) {
         if (e.kind !== "rejected") throw e;
         for (const i of part) {                                                            // 묶음이 거부되면 한 건씩 보내 문제의 행만 가려낸다
-          try { await client.insertIgnore(table, tk, [i.row]); (meta.ledger[table] = meta.ledger[table] || {})[i.key] = i.fp; res.sent++; }
+          try { await client.insertIgnore(table, tk, [i.row]); mark(table, i.key, i.fp); res.sent++; }
           catch (e2) { if (e2.kind !== "rejected") throw e2; res.rejected++; res.firstRejected = res.firstRejected || Rows.LABEL[table] + ": " + e2.message; }
         }
       }
@@ -129,7 +130,7 @@ function createSync({ store, persist, fetchImpl, now = () => new Date().toISOStr
   async function runUpload(opts = {}) {
     await ensure();
     if (!client) return { ok: false, error: "먼저 프로젝트 주소와 공개 키를 저장해 주세요." };
-    const { state, readOnly } = await snap();
+    const { state, readOnly } = await store.snapshot();
     if (!opts.force && !state.cloudLink.enabled) return { ok: false, error: "클라우드 저장이 꺼져 있어요." };
     const res = { sent: 0, rejected: 0, firstRejected: "" };
     try {
@@ -138,15 +139,15 @@ function createSync({ store, persist, fetchImpl, now = () => new Date().toISOStr
       for (const t of Rows.APPEND) if (p.inserts[t]) await sendInserts(t, p.inserts[t], tk, res);
       for (const t of Rows.APPEND) for (const item of p.tombstones[t] || []) {
         await client.tombstone(t, tk, item.row.id, { deleted_at: item.row.deleted_at, deleted_reason: item.row.deleted_reason });
-        (meta.ledger[t] = meta.ledger[t] || {})[item.key] = item.fp; res.sent++;
+        mark(t, item.key, item.fp); res.sent++;
       }
       for (const t of Rows.CURRENT) for (const part of Rows.chunk(p.upserts[t] || [], BATCH)) {
         await client.upsert(t, tk, Rows.CONFLICT[t], part.map(i => i.row));
-        part.forEach(i => ((meta.ledger[t] = meta.ledger[t] || {})[i.key] = i.fp)); res.sent += part.length;
+        part.forEach(i => mark(t, i.key, i.fp)); res.sent += part.length;
       }
       await saveMeta();
       if (!res.rejected && !readOnly) await store.setCloudLink({ lastSyncedAt: now() });
-      lastError = res.rejected ? res.rejected + "건은 서버가 받지 않았어요. (" + res.firstRejected + ")" : ""; retryMs = 0; lastUploadCount = res.sent;
+      lastError = res.rejected ? res.rejected + "건은 서버가 받지 않았어요. (" + res.firstRejected + ")" : ""; retryMs = 0;
       return { ok: !res.rejected, ...res, ...(res.rejected ? { error: lastError } : {}) };
     } catch (e) {
       lastError = msg(e);
@@ -161,7 +162,7 @@ function createSync({ store, persist, fetchImpl, now = () => new Date().toISOStr
   function schedule(ms = debounceMs) {
     if (!autoUpload) return;
     cancelTimer();
-    timer = setTimer(async () => { timer = null; try { await ensure(); const { state } = await snap(); if (state.cloudLink.enabled && session) await upload(); } catch (e) { /* 다음 저장 때 다시 */ } }, ms);
+    timer = setTimer(async () => { timer = null; try { await ensure(); const { state } = await store.snapshot(); if (state.cloudLink.enabled && session) await upload(); } catch (e) { /* 다음 저장 때 다시 */ } }, ms);
     if (timer && timer.unref) timer.unref();
   }
   function backoff() { retryMs = Math.min(retryMs ? retryMs * 2 : 5000, 300000); schedule(retryMs); }
@@ -189,10 +190,10 @@ function createSync({ store, persist, fetchImpl, now = () => new Date().toISOStr
     await ensure();
     if (!client || !session) return { ok: false, error: "먼저 로그인해 주세요." };
     try {
-      const tk = await token(), { state } = await snap(), rows = Rows.toRows(state), out = {};
+      const tk = await token(), { state } = await store.snapshot(), rows = Rows.toRows(state), out = {};
       let same = true;
       for (const t of Rows.TABLES) {
-        const local = rows[t].length, remote = await client.count(t, tk, false);
+        const local = rows[t].length, remote = await client.count(t, tk);
         out[t] = { local, remote, same: remote >= local };                                                      // 복원·다른 기기로 DB가 더 많을 수 있다
         if (!out[t].same) same = false;
       }
@@ -213,7 +214,7 @@ function createSync({ store, persist, fetchImpl, now = () => new Date().toISOStr
     return { ok: true, sent: up.sent, backup: backupName, verify: v };
   }
 
-  return { configure, login, logout, setEnabled, unlink, status, preview, upload, restore, verify, migrate, notifyChanged, _debug: { get lastUploadCount() { return lastUploadCount; } } };
+  return { configure, login, logout, setEnabled, unlink, status, preview, upload, restore, verify, migrate, notifyChanged };
 }
 
 module.exports = { createSync };
