@@ -969,10 +969,14 @@ function renderDetail() {
     el("h2", {}, o["주문번호"]),
     el("p", {}, badge(o.status), " ", o.reason),
     S.edited[o["주문번호"]] ? el("p", { class: "edited" }, "이메일 기준으로 납기를 바꿨어요 (원래 값: " + S.edited[o["주문번호"]].from + ")") : el("span", {}),
-    glanceBox(o), informedBox(o), replyBox(o), noticeBox(o), draftBox(o), quickNoteBox(o),
-    el("p", { class: "sub" }, "아래는 파일에 있던 원래 값이에요."), dl,
-    o.status === "지연" ? causeBox(o) : el("span", {}),
-    ...(S.schedule[NO(o)] ? [schedBlock(o)] : []), substBox(o),
+    glanceBox(o),
+    // 두 칸으로 나눈다: 왼쪽은 지금 할 일(안내·회신·안내문·초안), 오른쪽은 기록과 참고(메모·원래 값·원인·대체품). 칸 안에서는 위에서 아래로 쌓여 빈 구멍이 생기지 않는다.
+    el("div", { class: "detailcols" },
+      el("div", { class: "dcol" }, informedBox(o), replyBox(o), noticeBox(o), draftBox(o)),
+      el("div", { class: "dcol" }, quickNoteBox(o),
+        el("p", { class: "sub" }, "아래는 파일에 있던 원래 값이에요."), dl,
+        o.status === "지연" ? causeBox(o) : el("span", {}),
+        ...(S.schedule[NO(o)] ? [schedBlock(o)] : []), substBox(o))),
     back);                                                          // 닫기는 글 순서 맨 끝(Tab 순서가 안내 기록보다 뒤), 화면에서는 오른쪽 위에 둔다
 }
 
