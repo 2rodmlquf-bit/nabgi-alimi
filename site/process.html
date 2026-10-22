@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>납기 알리미 · 만든 과정</title>
+<meta name="description" content="발주한 물건이 늦어질 때, 연구원에게 먼저 알리고 공급사에게 어떤 순서로 연락할지 정리해 주는 바탕화면 프로그램. 학습·포트폴리오용 연습 프로젝트입니다.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="topnav" aria-label="페이지 이동"><div class="wrap"><a class="brand" href="index.html">납기 알리미</a><a class="tab" href="index.html">소개</a><a class="tab" href="screens.html">화면</a><a class="tab" href="process.html" aria-current="page">만든 과정</a><a class="tab" href="design.html">설계와 확인</a><a class="tab" href="try.html">직접 써 보기</a></div></nav>
+
+<div class="pagehead"><div class="wrap"><h1>만든 과정</h1><p>버전마다 무엇이 바뀌었고, 단계별로 무엇을 하려 했는지 정리했습니다.</p></div></div>
+<main>
+<section>
+  <div class="wrap">
+    <h2>버전별 변경점</h2>
+    <p class="sub">전체 이력은 <a href="https://github.com/2rodmlquf-bit/nabgi-alimi/blob/main/CHANGELOG.md">CHANGELOG</a>에 있습니다.</p>
+    <table>
+      <thead><tr><th>버전</th><th>바뀐 것</th></tr></thead>
+      <tbody>
+        <tr><td>v0.7.2</td><td><b>상세 창 정리.</b> 왼쪽 "지금 할 일", 오른쪽 "기록과 참고" 두 칸으로 나눠 빈 공간 없이 쌓았습니다.</td></tr>
+        <tr><td>v0.7.1</td><td><b>주문 상세를 가운데 넓은 창으로.</b> 오른쪽 좁은 칸의 입력 불편을 없앴고, 닫기·Esc, 좁은 창 대응을 넣었습니다.</td></tr>
+        <tr><td>v0.7.0</td><td><b>공급사 회신 추적.</b> 회신·약속일 기록, "회신 늦음" 계산, 답변 초안, 홈 탭, 연구원 문의 요약, 메일에서 회신 기록 제안, 저장 형식 v3(회신 목록 추가, 이전 파일은 자동 변환·백업).</td></tr>
+        <tr><td>v0.6.0</td><td><b>클라우드 저장(선택).</b> 올리기·복원·로그인, 메뉴를 업무 순서로 재배치, JSON 내보내기, 같은 주문번호 경고.</td></tr>
+        <tr><td>v0.5.0</td><td>안내 추적 보완, 오류 경로·규모 점검, 조건부 출시.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>어떻게 만들었나요 (개발 단계)</h2>
+    <p class="sub">이미 있던 앱(v0.4.0)을 단계(Phase)별로 키웠습니다. 매 단계마다 "하려던 것 → 측정 → 결과"를 문서로 남겼습니다.</p>
+    <table>
+      <thead><tr><th>단계</th><th>하려던 것</th><th>결과</th></tr></thead>
+      <tbody>
+        <tr><td>0~1 기준선·감사</td><td>되돌릴 방법과 시험 안전장치 만들기, 만들어진 것과 실제로 되는 것 구분</td><td>git 저장소, 앱을 실제로 눌러 보는 자동 시험(E2E)</td></tr>
+        <tr><td>2 데이터 계층</td><td>저장 방식을 화면에서 분리해 나중에 DB로 옮기기 쉽게</td><td>저장소 인터페이스, 기록마다 id·시각, 지우지 않고 "삭제 표시"만 남김</td></tr>
+        <tr><td>3~4 기능 추가</td><td>빠른 메모, 엑셀 직접 열기</td><td>메모(300자, Ctrl+Enter), .xlsx 읽기와 한도 안내</td></tr>
+        <tr><td>5~6 화면·접근성</td><td>자주 쓰는 버튼이 화면 밖, 용어 혼재, 마우스로만 눌림</td><td>창 크기별로 px을 재서 재배치(1,374px → 첫 화면), 금지어 0건, 키보드만으로 핵심 흐름</td></tr>
+        <tr><td>7~9 안정성·릴리스</td><td>오류 경로·규모·설치 확인</td><td>앱 중복 실행 잠금, 저장 한도 80% 경고, 5,000행 측정, 설치 파일 점검, v0.5.0 조건부 출시</td></tr>
+        <tr><td>10 클라우드 저장</td><td>로컬 기록을 서버에도 안전하게 두기</td><td>인터뷰로 범위 결정 → DB·보안 규칙 → 올리기·복원·로그인, 직접 QA 반영(패널·메뉴 개선)</td></tr>
+        <tr><td>11 회신 추적</td><td>공급사가 약속한 날이 지나도 모르고 지나가는 일 막기</td><td>인터뷰 → spec·plan → 홈 탭, 회신 기록, 회신 늦음 판정, 답변 초안, 이메일 회신 제안, 저장 형식 v3, 클라우드 표 추가</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="wrap"><div class="pager"><a class="btn" href="screens.html">← 화면</a><a class="btn primary" href="design.html">다음: 설계와 확인 →</a></div></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    학습·포트폴리오용 연습 프로젝트입니다. 실제 업무 데이터를 넣지 마세요.<br>
+    코드와 문서: <a href="https://github.com/2rodmlquf-bit/nabgi-alimi">github.com/2rodmlquf-bit/nabgi-alimi</a>
+  </div>
+</footer>
+</body>
+</html>
